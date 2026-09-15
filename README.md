@@ -1,5 +1,7 @@
 # ForenSys — Digital Crime Scene Evidence & Investigation Management System
 
+**Team:** [Advaith Anish](https://github.com/Aith-7799) · [Vidisha Jain](https://github.com/vidisha2508) · [Celaidon](https://github.com/Celaidon)
+
 A full-stack implementation of the **ForenSys** design from the DBMS DA-2 report: the
 Oracle 11g schema, PL/SQL procedures and triggers are ported to **PostgreSQL**, wrapped in a
 Node/Express API with server-side role enforcement, and surfaced in a React UI covering all
