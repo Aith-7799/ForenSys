@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-forensic-50: #eef2f7;
+  --color-forensic-100: #d8e0ec;
+  --color-forensic-600: #3f5a86;
+  --color-forensic-700: #2f4468;
+  --color-forensic-900: #1a2740;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-100 text-slate-800 antialiased;
+}
+
+/*
+ * Shared component classes.
+ *
+ * Tailwind v4 will not let one class in this block @apply another class defined
+ * here (only real utilities are applyable), so the button base is repeated in
+ * each variant rather than factored out into `.fs-btn`.
+ */
+@layer components {
+  .fs-input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm
+           focus:border-forensic-600 focus:ring-1 focus:ring-forensic-600 focus:outline-none
+           disabled:cursor-not-allowed disabled:bg-slate-100;
+  }
+
+  .fs-label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+
+  .fs-btn,
+  .fs-btn-primary,
+  .fs-btn-secondary,
+  .fs-btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium
+           transition-colors focus:ring-2 focus:ring-offset-1 focus:outline-none
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .fs-btn-primary {
+    @apply bg-forensic-700 text-white hover:bg-forensic-600 focus:ring-forensic-600;
+  }
+
+  .fs-btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400;
+  }
+
+  .fs-btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .fs-card {
+    @apply rounded-lg border border-slate-200 bg-white p-5 shadow-sm;
+  }
+
+  .fs-th {
+    @apply px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase;
+  }
+
+  .fs-td {
+    @apply px-3 py-2 text-sm text-slate-700;
+  }
+}

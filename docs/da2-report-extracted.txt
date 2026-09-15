@@ -1,0 +1,539 @@
+FORENSYS
+Digital Crime Scene Evidence and Investigation Management System
+Digital Assignment - 2 (DA-2) Technical Implementation & Database Report
+Database Management Systems
+VANI MISHRA 25BPS1068 | VIDISHA JAIN 25BPS1089 | ADVAITH ANISH 25BAI1434
+System Name:
+FORENSYS (Crime Scene & Evidence Management System)
+Database Technology:
+Oracle Database 11g Express Edition / Enterprise Edition
+Document Purpose:
+DA-2 Comprehensive Database Design, SQL, PL/SQL & Audit Verification
+Specification Standards:
+100% Oracle 11g SQL*Plus / Run SQL Command Line Compatible
+1. Executive Summary & System Architectural Overview
+Modern law enforcement and forensic investigation agencies generate vast volumes of sensitive, heterogeneous evidence. Historically, crime scene investigation records were maintained across fragmented physical paper logs, localized spreadsheets, and disconnected application databases. As established in DA-1 (Part 1), this traditional workflow introduced severe operational vulnerabilities: data duplication, unrecorded chain-of-custody transfers, evidence tampering, delayed judicial proceedings, and total lack of verifiable auditability. FORENSYS (Digital Crime Scene Evidence and Investigation Management System) was designed to eliminate these failure points by establishing a centralized, tamper-resistant, and relational database management framework built upon Oracle Database 11g.
+This DA-2 report details the full technical implementation of FORENSYS in Oracle 11g SQL and PL/SQL. The relational schema models four core operational entities (OFFICERS, CASES, EVIDENCE, CUSTODY_LOG) along with specialized subtypes (PHYSICAL_EVIDENCE, DIGITAL_EVIDENCE) and automated system auditing structures (CASE_AUDIT_LOG). The system enforces strict multi-tier data integrity through primary keys, foreign keys with cascading deletions, unique constraints, and check constraints. Furthermore, this report delivers advanced SQL capabilities—including multi-table joins, complex nested subqueries, aggregate grouping analytical queries, and database views—alongside production-grade PL/SQL Stored Procedures, Functions, Database Triggers, Explicit/Implicit Cursors, and Transaction Control Language (TCL) logic.
+1.1 Core Relational Entities & Data Dictionary Summary
+The relational schema implemented in Oracle 11g consists of six main tables structured as follows:
+Table Name
+Primary Key
+Foreign Keys & Constraints
+Operational Purpose
+OFFICERS
+officer_id (VARCHAR2)
+badge_number UNIQUE, role CHECK constraint
+Stores law enforcement personnel, analysts, and admins with access control roles.
+CASES
+case_id (VARCHAR2)
+lead_officer_id -> OFFICERS(officer_id), status CHECK
+Tracks criminal case details, incident timestamp, spatial location, and investigation status.
+EVIDENCE
+evidence_id (VARCHAR2)
+case_id -> CASES(case_id) ON DELETE CASCADE
+Central evidence register capturing item category and collection timestamp.
+PHYSICAL_EVIDENCE
+evidence_id (VARCHAR2)
+evidence_id -> EVIDENCE(evidence_id) ON DELETE CASCADE
+Subtype table storing physical storage locker ID, seal numbers, and container types.
+DIGITAL_EVIDENCE
+evidence_id (VARCHAR2)
+evidence_id -> EVIDENCE(evidence_id) ON DELETE CASCADE
+Subtype table storing SHA-256 cryptographic hashes, media format, size, and device serials.
+CUSTODY_LOG
+log_id (VARCHAR2)
+evidence_id -> EVIDENCE, released_by & received_by -> OFFICERS
+Immutable audit trail recording every evidence custody transfer between personnel.
+2. Database Schema Creation (Oracle 11g DDL)
+To establish the FORENSYS database architecture in Oracle 11g, specific Data Definition Language (DDL) statements were crafted. Oracle 11g data types such as VARCHAR2, NUMBER, TIMESTAMP, and DATE were utilized. All table definitions enforce domain constraints (CHECK), entity integrity (PRIMARY KEY), and referential integrity (FOREIGN KEY).
+2.1 SQL Table Creation Code
+CREATE TABLE OFFICERS (
+officer_id VARCHAR2(36) NOT NULL,
+badge_number VARCHAR2(50) NOT NULL,
+full_name VARCHAR2(150) NOT NULL,
+role VARCHAR2(50) NOT NULL,
+password_hash VARCHAR2(255) NOT NULL,
+CONSTRAINT pk_officers PRIMARY KEY (officer_id),
+CONSTRAINT uk_officers_badge UNIQUE (badge_number),
+CONSTRAINT chk_officers_role CHECK (role IN ('Investigating Officer', 'Lab Analyst', 'System Administrator', 'Judicial Authority'))
+);
+CREATE TABLE CASES (
+case_id VARCHAR2(36) NOT NULL,
+title VARCHAR2(255) NOT NULL,
+incident_timestamp TIMESTAMP NOT NULL,
+location_point VARCHAR2(100) NOT NULL,
+status VARCHAR2(50) DEFAULT 'open' NOT NULL,
+lead_officer_id VARCHAR2(36) NOT NULL,
+CONSTRAINT pk_cases PRIMARY KEY (case_id),
+CONSTRAINT fk_cases_lead_officer FOREIGN KEY (lead_officer_id) REFERENCES OFFICERS(officer_id),
+CONSTRAINT chk_cases_status CHECK (status IN ('open', 'under_investigation', 'in_court', 'closed', 'archived'))
+);
+CREATE TABLE EVIDENCE (
+evidence_id VARCHAR2(36) NOT NULL,
+case_id VARCHAR2(36) NOT NULL,
+evidence_type VARCHAR2(50) NOT NULL,
+collection_timestamp TIMESTAMP NOT NULL,
+CONSTRAINT pk_evidence PRIMARY KEY (evidence_id),
+CONSTRAINT fk_evidence_case FOREIGN KEY (case_id) REFERENCES CASES(case_id) ON DELETE CASCADE,
+CONSTRAINT chk_evidence_type CHECK (evidence_type IN ('Weapon', 'Biological', 'Digital Device', 'Document', 'Clothing', 'Fingerprint', 'Other'))
+);
+CREATE TABLE PHYSICAL_EVIDENCE (
+evidence_id VARCHAR2(36) NOT NULL,
+storage_locker_number VARCHAR2(50) NOT NULL,
+seal_number VARCHAR2(50) NOT NULL,
+container_type VARCHAR2(50) NOT NULL,
+CONSTRAINT pk_physical_evidence PRIMARY KEY (evidence_id),
+CONSTRAINT fk_physical_evidence_ev FOREIGN KEY (evidence_id) REFERENCES EVIDENCE(evidence_id) ON DELETE CASCADE
+);
+CREATE TABLE DIGITAL_EVIDENCE (
+evidence_id VARCHAR2(36) NOT NULL,
+file_hash_sha256 VARCHAR2(64) NOT NULL,
+media_type VARCHAR2(50) NOT NULL,
+size_mb NUMBER(10, 2) NOT NULL,
+device_serial VARCHAR2(50) NOT NULL,
+CONSTRAINT pk_digital_evidence PRIMARY KEY (evidence_id),
+CONSTRAINT fk_digital_evidence_ev FOREIGN KEY (evidence_id) REFERENCES EVIDENCE(evidence_id) ON DELETE CASCADE,
+CONSTRAINT chk_digital_size CHECK (size_mb > 0)
+);
+CREATE TABLE CUSTODY_LOG (
+log_id VARCHAR2(36) NOT NULL,
+evidence_id VARCHAR2(36) NOT NULL,
+released_by_id VARCHAR2(36) NOT NULL,
+received_by_id VARCHAR2(36) NOT NULL,
+transfer_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+mongo_doc_ref VARCHAR2(24),
+CONSTRAINT pk_custody_log PRIMARY KEY (log_id),
+CONSTRAINT fk_custody_evidence FOREIGN KEY (evidence_id) REFERENCES EVIDENCE(evidence_id) ON DELETE CASCADE,
+CONSTRAINT fk_custody_released_by FOREIGN KEY (released_by_id) REFERENCES OFFICERS(officer_id),
+CONSTRAINT fk_custody_received_by FOREIGN KEY (received_by_id) REFERENCES OFFICERS(officer_id)
+);
+CREATE TABLE CASE_AUDIT_LOG (
+audit_id NUMBER NOT NULL,
+case_id VARCHAR2(36) NOT NULL,
+old_status VARCHAR2(50),
+new_status VARCHAR2(50),
+changed_by VARCHAR2(100) DEFAULT USER,
+change_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+CONSTRAINT pk_case_audit_log PRIMARY KEY (audit_id)
+);
+CREATE SEQUENCE seq_audit_id START WITH 1 INCREMENT BY 1;
+3. Real-World Forensic Dataset Insertion
+To test the system under realistic operational conditions, real-world forensic datasets representing homicide, cybercrime, financial fraud, and burglary cases were inserted into Oracle 11g.
+3.1 DML Data Insertion Statements
+INSERT INTO OFFICERS VALUES ('OFF-101', 'BADGE-9081', 'Det. Robert Vance', 'Investigating Officer', 'hash_vance_9081');
+INSERT INTO OFFICERS VALUES ('OFF-102', 'BADGE-9082', 'Dr. Sarah Connor', 'Lab Analyst', 'hash_connor_9082');
+INSERT INTO OFFICERS VALUES ('OFF-103', 'BADGE-9083', 'Admin Marcus Wright', 'System Administrator', 'hash_wright_9083');
+INSERT INTO OFFICERS VALUES ('OFF-104', 'BADGE-9084', 'Det. Elena Rostova', 'Investigating Officer', 'hash_rostova_9084');
+INSERT INTO OFFICERS VALUES ('OFF-105', 'BADGE-9085', 'Judge Arthur Pendelton', 'Judicial Authority', 'hash_pendelton_9085');
+INSERT INTO OFFICERS VALUES ('OFF-106', 'BADGE-9086', 'Dr. Alan Turing', 'Lab Analyst', 'hash_turing_9086');
+INSERT INTO CASES VALUES ('CASE-2024-01', 'Downtown Bank Cyber Attack', TIMESTAMP '2024-01-15 08:30:00', '40.7128,-74.0060', 'under_investigation', 'OFF-101');
+INSERT INTO CASES VALUES ('CASE-2024-02', 'Westside Homicide Investigation', TIMESTAMP '2024-02-10 21:15:00', '34.0522,-118.2437', 'open', 'OFF-104');
+INSERT INTO CASES VALUES ('CASE-2024-03', 'Corporate Financial Fraud Audit', TIMESTAMP '2024-03-01 11:00:00', '41.8781,-87.6298', 'in_court', 'OFF-101');
+INSERT INTO CASES VALUES ('CASE-2024-04', 'Harbor Warehouse Narcotics Seizure', TIMESTAMP '2024-03-20 02:45:00', '25.7617,-80.1918', 'open', 'OFF-104');
+INSERT INTO CASES VALUES ('CASE-2024-05', 'Metro Jewelry Store Robbery', TIMESTAMP '2024-04-05 14:20:00', '37.7749,-122.4194', 'closed', 'OFF-101');
+INSERT INTO EVIDENCE VALUES ('EV-801', 'CASE-2024-01', 'Digital Device', TIMESTAMP '2024-01-15 10:00:00');
+INSERT INTO EVIDENCE VALUES ('EV-802', 'CASE-2024-01', 'Document', TIMESTAMP '2024-01-15 11:30:00');
+INSERT INTO EVIDENCE VALUES ('EV-803', 'CASE-2024-02', 'Weapon', TIMESTAMP '2024-02-10 22:45:00');
+INSERT INTO EVIDENCE VALUES ('EV-804', 'CASE-2024-02', 'Biological', TIMESTAMP '2024-02-10 23:15:00');
+INSERT INTO EVIDENCE VALUES ('EV-805', 'CASE-2024-03', 'Digital Device', TIMESTAMP '2024-03-01 14:00:00');
+INSERT INTO EVIDENCE VALUES ('EV-806', 'CASE-2024-04', 'Other', TIMESTAMP '2024-03-20 04:00:00');
+INSERT INTO EVIDENCE VALUES ('EV-807', 'CASE-2024-05', 'Fingerprint', TIMESTAMP '2024-04-05 16:30:00');
+INSERT INTO PHYSICAL_EVIDENCE VALUES ('EV-803', 'LOCKER-A12', 'SEAL-99401', 'Heavy Metal Vault Container');
+INSERT INTO PHYSICAL_EVIDENCE VALUES ('EV-804', 'LOCKER-B04', 'SEAL-99402', 'Sterile Biohazard Refrigerated Pack');
+INSERT INTO PHYSICAL_EVIDENCE VALUES ('EV-806', 'LOCKER-C09', 'SEAL-99403', 'Sealed Narcotics Evidence Bag');
+INSERT INTO DIGITAL_EVIDENCE VALUES ('EV-801', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Disk Image (.raw)', 1500.50, 'SN-SERVER-9921');
+INSERT INTO DIGITAL_EVIDENCE VALUES ('EV-805', '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4', 'Database Dump (.sql)', 450.75, 'SN-LAPTOP-4410');
+INSERT INTO CUSTODY_LOG VALUES ('LOG-5001', 'EV-801', 'OFF-101', 'OFF-102', TIMESTAMP '2024-01-15 14:00:00', '65b2f11a9a8c123456789a01');
+INSERT INTO CUSTODY_LOG VALUES ('LOG-5002', 'EV-801', 'OFF-102', 'OFF-106', TIMESTAMP '2024-01-16 09:30:00', '65b2f11a9a8c123456789a02');
+INSERT INTO CUSTODY_LOG VALUES ('LOG-5003', 'EV-803', 'OFF-104', 'OFF-102', TIMESTAMP '2024-02-11 08:00:00', '65b2f11a9a8c123456789a03');
+INSERT INTO CUSTODY_LOG VALUES ('LOG-5004', 'EV-804', 'OFF-104', 'OFF-102', TIMESTAMP '2024-02-11 08:30:00', '65b2f11a9a8c123456789a04');
+INSERT INTO CUSTODY_LOG VALUES ('LOG-5005', 'EV-805', 'OFF-101', 'OFF-106', TIMESTAMP '2024-03-02 10:15:00', '65b2f11a9a8c123456789a05');
+COMMIT;
+4. Comprehensive CRUD Operations
+Data persistence in FORENSYS requires standard Create, Read, Update, and Delete (CRUD) operations. The following Oracle 11g SQL statements demonstrate real-time record manipulation.
+4.1 Create, Read, Update, and Delete SQL Execution
+-- 1. CREATE: Register a new investigating officer and physical evidence item
+INSERT INTO OFFICERS VALUES ('OFF-107', 'BADGE-9087', 'Det. James Gordon', 'Investigating Officer', 'hash_gordon_9087');
+INSERT INTO EVIDENCE VALUES ('EV-808', 'CASE-2024-02', 'Clothing', TIMESTAMP '2024-02-11 12:00:00');
+INSERT INTO PHYSICAL_EVIDENCE VALUES ('EV-808', 'LOCKER-A15', 'SEAL-99408', 'Evidence Garment Bag');
+-- 2. READ: Query all evidence items and their current custody status for CASE-2024-02
+SELECT e.evidence_id, e.evidence_type, e.collection_timestamp, p.storage_locker_number, p.seal_number
+FROM EVIDENCE e
+LEFT JOIN PHYSICAL_EVIDENCE p ON e.evidence_id = p.evidence_id
+WHERE e.case_id = 'CASE-2024-02';
+-- 3. UPDATE: Change case status from 'open' to 'under_investigation' and assign new lead officer
+UPDATE CASES
+SET status = 'under_investigation', lead_officer_id = 'OFF-107'
+WHERE case_id = 'CASE-2024-02';
+-- 4. DELETE: Demonstrate safe cascading deletion on a test case entity
+INSERT INTO CASES VALUES ('CASE-TEMP-99', 'Temporary Test Case', TIMESTAMP '2024-05-01 10:00:00', '0.0,0.0', 'open', 'OFF-101');
+INSERT INTO EVIDENCE VALUES ('EV-TEMP-99', 'CASE-TEMP-99', 'Other', TIMESTAMP '2024-05-01 10:05:00');
+DELETE FROM CASES WHERE case_id = 'CASE-TEMP-99';
+COMMIT;
+5. Advanced SQL Queries & Analytical Data Extraction
+Complex forensic reporting requires advanced relational querying. This section presents comprehensive multi-table joins, nested subqueries (single-row, multi-row, correlated, inline views), aggregate grouping with HAVING, and database views.
+5.1 SQL Joins (INNER, LEFT, RIGHT, FULL OUTER, SELF, CROSS)
+-- 1. INNER JOIN: Retrieve cases with their assigned lead officer details
+SELECT c.case_id, c.title, c.status, o.full_name AS lead_officer, o.badge_number
+FROM CASES c
+INNER JOIN OFFICERS o ON c.lead_officer_id = o.officer_id;
+-- 2. LEFT OUTER JOIN: Retrieve all evidence items and physical locker details (if physical)
+SELECT e.evidence_id, e.case_id, e.evidence_type, p.storage_locker_number, p.seal_number
+FROM EVIDENCE e
+LEFT OUTER JOIN PHYSICAL_EVIDENCE p ON e.evidence_id = p.evidence_id;
+-- 3. RIGHT OUTER JOIN: Retrieve all officers and custody logs where they acted as releasing officer
+SELECT o.full_name, o.role, cl.log_id, cl.evidence_id, cl.transfer_timestamp
+FROM CUSTODY_LOG cl
+RIGHT OUTER JOIN OFFICERS o ON cl.released_by_id = o.officer_id;
+-- 4. FULL OUTER JOIN: Match all digital evidence records with custody log transfers
+SELECT d.evidence_id, d.file_hash_sha256, d.size_mb, cl.log_id, cl.transfer_timestamp
+FROM DIGITAL_EVIDENCE d
+FULL OUTER JOIN CUSTODY_LOG cl ON d.evidence_id = cl.evidence_id;
+-- 5. SELF JOIN: Track officer-to-officer evidence custody transfers
+SELECT cl.log_id, cl.evidence_id,
+rel.full_name AS released_by_officer,
+rec.full_name AS received_by_officer,
+cl.transfer_timestamp
+FROM CUSTODY_LOG cl
+JOIN OFFICERS rel ON cl.released_by_id = rel.officer_id
+JOIN OFFICERS rec ON cl.received_by_id = rec.officer_id;
+-- 6. CROSS JOIN: Generate combination matrix of officers and case statuses
+SELECT o.full_name, cs.status_type
+FROM OFFICERS o
+CROSS JOIN (SELECT DISTINCT status AS status_type FROM CASES) cs;
+5.2 Nested Queries & Subqueries
+-- 1. Single-Row Subquery: Find evidence collected after the Westside Homicide case creation
+SELECT evidence_id, evidence_type, collection_timestamp
+FROM EVIDENCE
+WHERE collection_timestamp > (
+SELECT incident_timestamp FROM CASES WHERE case_id = 'CASE-2024-02'
+);
+-- 2. Multi-Row Subquery (IN): Find officers who received evidence related to Digital Devices
+SELECT officer_id, full_name, badge_number
+FROM OFFICERS
+WHERE officer_id IN (
+SELECT received_by_id FROM CUSTODY_LOG WHERE evidence_id IN (
+SELECT evidence_id FROM EVIDENCE WHERE evidence_type = 'Digital Device'
+)
+);
+-- 3. Correlated Subquery (EXISTS): Find officers who lead at least one case containing digital evidence
+SELECT o.officer_id, o.full_name, o.badge_number
+FROM OFFICERS o
+WHERE EXISTS (
+SELECT 1 FROM CASES c
+JOIN EVIDENCE e ON c.case_id = e.case_id
+WHERE c.lead_officer_id = o.officer_id AND e.evidence_type = 'Digital Device'
+);
+-- 4. Inline View (Subquery in FROM clause): Rank officers by total evidence collected in their cases
+SELECT officer_summary.lead_officer_id, officer_summary.officer_name, officer_summary.total_evidence
+FROM (
+SELECT c.lead_officer_id, o.full_name AS officer_name, COUNT(e.evidence_id) AS total_evidence
+FROM CASES c
+JOIN OFFICERS o ON c.lead_officer_id = o.officer_id
+LEFT JOIN EVIDENCE e ON c.case_id = e.case_id
+GROUP BY c.lead_officer_id, o.full_name
+) officer_summary
+WHERE officer_summary.total_evidence > 0;
+-- 5. Scalar Subquery in SELECT: List cases with total evidence items count as a scalar column
+SELECT c.case_id, c.title, c.status,
+(SELECT COUNT(*) FROM EVIDENCE e WHERE e.case_id = c.case_id) AS total_items
+FROM CASES c;
+5.3 Aggregate Functions & Grouping (GROUP BY, HAVING, ROLLUP)
+-- 1. Aggregate evidence counts grouped by case status with HAVING filter
+SELECT c.status, COUNT(e.evidence_id) AS total_evidence_items, COUNT(DISTINCT c.case_id) AS total_cases
+FROM CASES c
+LEFT JOIN EVIDENCE e ON c.case_id = e.case_id
+GROUP BY c.status
+HAVING COUNT(e.evidence_id) >= 1;
+-- 2. Average, Max, Min digital file sizes grouped by media type
+SELECT media_type,
+COUNT(*) AS total_files,
+ROUND(AVG(size_mb), 2) AS avg_size_mb,
+MAX(size_mb) AS max_size_mb,
+MIN(size_mb) AS min_size_mb,
+ROUND(SUM(size_mb), 2) AS total_storage_mb
+FROM DIGITAL_EVIDENCE
+GROUP BY media_type;
+-- 3. Advanced Grouping with ROLLUP for hierarchical evidence metrics
+SELECT NVL(c.status, 'TOTAL ALL STATUSES') AS case_status,
+NVL(e.evidence_type, 'SUBTOTAL TYPE') AS evidence_type,
+COUNT(e.evidence_id) AS item_count
+FROM CASES c
+JOIN EVIDENCE e ON c.case_id = e.case_id
+GROUP BY ROLLUP(c.status, e.evidence_type);
+5.4 Database Views (Simple, Complex, Updatable)
+-- 1. SIMPLE VIEW: Active open cases summary
+CREATE OR REPLACE VIEW VW_ACTIVE_CASES AS
+SELECT case_id, title, incident_timestamp, lead_officer_id
+FROM CASES
+WHERE status IN ('open', 'under_investigation');
+-- 2. COMPLEX VIEW: Comprehensive Chain of Custody Audit Log View
+CREATE OR REPLACE VIEW VW_FULL_CUSTODY_AUDIT AS
+SELECT cl.log_id,
+c.case_id,
+c.title AS case_title,
+e.evidence_id,
+e.evidence_type,
+rel.full_name AS released_by_officer,
+rec.full_name AS received_by_officer,
+cl.transfer_timestamp,
+cl.mongo_doc_ref
+FROM CUSTODY_LOG cl
+JOIN EVIDENCE e ON cl.evidence_id = e.evidence_id
+JOIN CASES c ON e.case_id = c.case_id
+JOIN OFFICERS rel ON cl.released_by_id = rel.officer_id
+JOIN OFFICERS rec ON cl.received_by_id = rec.officer_id;
+-- 3. UPDATABLE VIEW: Simple officer profile management view
+CREATE OR REPLACE VIEW VW_OFFICER_PROFILES AS
+SELECT officer_id, badge_number, full_name, role
+FROM OFFICERS;
+-- Query the views
+SELECT * FROM VW_ACTIVE_CASES;
+SELECT * FROM VW_FULL_CUSTODY_AUDIT;
+.
+.
+.
+.
+.
+.
+for all the cases
+6. PL/SQL Stored Procedures (Oracle 11g)
+Stored Procedures encapsulate core forensic workflows within procedural PL/SQL code blocks. They utilize IN, OUT, and IN OUT parameters, transactional boundary controls, and explicit exception handlers.
+6.1 Procedure 1: Register New Case (`SP_REGISTER_NEW_CASE`)
+CREATE OR REPLACE PROCEDURE SP_REGISTER_NEW_CASE (
+p_case_id IN VARCHAR2,
+p_title IN VARCHAR2,
+p_incident_ts IN TIMESTAMP,
+p_location IN VARCHAR2,
+p_lead_officer IN VARCHAR2,
+p_status_msg OUT VARCHAR2
+) AS
+v_officer_count NUMBER;
+BEGIN
+SELECT COUNT(*) INTO v_officer_count
+FROM OFFICERS
+WHERE officer_id = p_lead_officer;
+IF v_officer_count = 0 THEN
+p_status_msg := 'ERROR: Lead officer ID does not exist in OFFICERS database.';
+RETURN;
+END IF;
+INSERT INTO CASES (case_id, title, incident_timestamp, location_point, status, lead_officer_id)
+VALUES (p_case_id, p_title, p_incident_ts, p_location, 'open', p_lead_officer);
+COMMIT;
+p_status_msg := 'SUCCESS: Case ' || p_case_id || ' registered successfully.';
+EXCEPTION
+WHEN DUP_VAL_ON_INDEX THEN
+p_status_msg := 'ERROR: Case ID ' || p_case_id || ' already exists.';
+ROLLBACK;
+WHEN OTHERS THEN
+p_status_msg := 'ERROR: Failed to register case - ' || SQLERRM;
+ROLLBACK;
+END SP_REGISTER_NEW_CASE;
+/
+6.2 Procedure 2: Transfer Evidence Custody (`SP_TRANSFER_CUSTODY`)
+CREATE OR REPLACE PROCEDURE SP_TRANSFER_CUSTODY (
+p_log_id IN VARCHAR2,
+p_evidence_id IN VARCHAR2,
+p_released_by IN VARCHAR2,
+p_received_by IN VARCHAR2,
+p_mongo_ref IN VARCHAR2,
+p_out_log OUT VARCHAR2
+) AS
+v_ev_exists NUMBER;
+BEGIN
+SELECT COUNT(*) INTO v_ev_exists FROM EVIDENCE WHERE evidence_id = p_evidence_id;
+IF v_ev_exists = 0 THEN
+RAISE_APPLICATION_ERROR(-20002, 'Evidence ID does not exist.');
+END IF;
+INSERT INTO CUSTODY_LOG (log_id, evidence_id, released_by_id, received_by_id, transfer_timestamp, mongo_doc_ref)
+VALUES (p_log_id, p_evidence_id, p_released_by, p_received_by, CURRENT_TIMESTAMP, p_mongo_ref);
+COMMIT;
+p_out_log := 'TRANSFER LOGGED: ' || p_log_id || ' for Evidence: ' || p_evidence_id;
+EXCEPTION
+WHEN OTHERS THEN
+ROLLBACK;
+p_out_log := 'TRANSFER FAILED: ' || SQLERRM;
+END SP_TRANSFER_CUSTODY;
+/
+6.3 Execution & Verification Block for Stored Procedures
+SET SERVEROUTPUT ON;
+DECLARE
+v_msg VARCHAR2(255);
+BEGIN
+SP_REGISTER_NEW_CASE('CASE-2024-06', 'Downtown Hacking Incident', CURRENT_TIMESTAMP, '40.7128,-74.0060', 'OFF-101', v_msg);
+DBMS_OUTPUT.PUT_LINE(v_msg);
+SP_TRANSFER_CUSTODY('LOG-5006', 'EV-801', 'OFF-106', 'OFF-101', '65b2f11a9a8c123456789a06', v_msg);
+DBMS_OUTPUT.PUT_LINE(v_msg);
+END;
+/
+7. PL/SQL Functions (Oracle 11g)
+PL/SQL Functions perform specific data calculations and return computed values to the caller.
+7.1 Function 1: Count Evidence Custody Transfers (`FN_COUNT_CUSTODY_TRANSFERS`)
+CREATE OR REPLACE FUNCTION FN_COUNT_CUSTODY_TRANSFERS (
+p_evidence_id IN VARCHAR2
+) RETURN NUMBER AS
+v_count NUMBER := 0;
+BEGIN
+SELECT COUNT(*) INTO v_count
+FROM CUSTODY_LOG
+WHERE evidence_id = p_evidence_id;
+RETURN v_count;
+EXCEPTION
+WHEN OTHERS THEN
+RETURN 0;
+END FN_COUNT_CUSTODY_TRANSFERS;
+/
+7.2 Function 2: Calculate Officer Active Workload (`FN_GET_OFFICER_WORKLOAD`)
+CREATE OR REPLACE FUNCTION FN_GET_OFFICER_WORKLOAD (
+p_officer_id IN VARCHAR2
+) RETURN NUMBER AS
+v_active_cases NUMBER := 0;
+BEGIN
+SELECT COUNT(*) INTO v_active_cases
+FROM CASES
+WHERE lead_officer_id = p_officer_id
+AND status IN ('open', 'under_investigation');
+RETURN v_active_cases;
+EXCEPTION
+WHEN OTHERS THEN
+RETURN 0;
+END FN_GET_OFFICER_WORKLOAD;
+/
+7.3 Function Execution & Verification Queries
+SELECT evidence_id, evidence_type, FN_COUNT_CUSTODY_TRANSFERS(evidence_id) AS total_transfers
+FROM EVIDENCE;
+SELECT officer_id, full_name, role, FN_GET_OFFICER_WORKLOAD(officer_id) AS active_cases
+FROM OFFICERS
+WHERE role = 'Investigating Officer';
+8. PL/SQL Database Triggers (Oracle 11g)
+Database triggers automatically enforce complex business constraints, execute audit logging, and prevent illegal data operations in real time.
+8.1 Trigger 1: Case Status Change Audit Logger (`TRG_AUDIT_CASE_STATUS`)
+CREATE OR REPLACE TRIGGER TRG_AUDIT_CASE_STATUS
+AFTER UPDATE OF status ON CASES
+FOR EACH ROW
+BEGIN
+IF :OLD.status <> :NEW.status THEN
+INSERT INTO CASE_AUDIT_LOG (audit_id, case_id, old_status, new_status, changed_by, change_timestamp)
+VALUES (seq_audit_id.NEXTVAL, :OLD.case_id, :OLD.status, :NEW.status, USER, CURRENT_TIMESTAMP);
+END IF;
+END TRG_AUDIT_CASE_STATUS;
+/
+8.2 Trigger 2: Prevent Adding Evidence to Closed Cases (`TRG_PREVENT_CLOSED_CASE_EVID`)
+CREATE OR REPLACE TRIGGER TRG_PREVENT_CLOSED_CASE_EVID
+BEFORE INSERT ON EVIDENCE
+FOR EACH ROW
+DECLARE
+v_status VARCHAR2(50);
+BEGIN
+SELECT status INTO v_status FROM CASES WHERE case_id = :NEW.case_id;
+IF v_status IN ('closed', 'archived') THEN
+RAISE_APPLICATION_ERROR(-20001, 'CANNOT INSERT EVIDENCE: Case ' || :NEW.case_id || ' is closed or archived.');
+END IF;
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+RAISE_APPLICATION_ERROR(-20003, 'CANNOT INSERT EVIDENCE: Parent case does not exist.');
+END TRG_PREVENT_CLOSED_CASE_EVID;
+/
+8.3 Trigger Testing & Audit Verification
+-- Test Status Change Audit Trigger
+UPDATE CASES SET status = 'in_court' WHERE case_id = 'CASE-2024-02';
+SELECT * FROM CASE_AUDIT_LOG;
+-- Test Closed Case Prevention Trigger (Should raise ORA-20001)
+-- INSERT INTO EVIDENCE VALUES ('EV-FAIL-01', 'CASE-2024-05', 'Weapon', CURRENT_TIMESTAMP);
+9. PL/SQL Cursors (Explicit, Implicit, Parameterized, FOR Loop)
+Cursors manage multi-row query result processing within procedural PL/SQL blocks.
+9.1 Explicit & Parameterized Cursor Implementation
+SET SERVEROUTPUT ON;
+DECLARE
+-- Parameterized Cursor fetching evidence by case status
+CURSOR cur_case_evidence (p_status VARCHAR2) IS
+SELECT c.case_id, c.title, e.evidence_id, e.evidence_type
+FROM CASES c
+JOIN EVIDENCE e ON c.case_id = e.case_id
+WHERE c.status = p_status;
+v_rec cur_case_evidence%ROWTYPE;
+BEGIN
+DBMS_OUTPUT.PUT_LINE('--- PROCESSING EVIDENCE FOR OPEN CASES ---');
+OPEN cur_case_evidence('open');
+LOOP
+FETCH cur_case_evidence INTO v_rec;
+EXIT WHEN cur_case_evidence%NOTFOUND;
+DBMS_OUTPUT.PUT_LINE('Case: ' || v_rec.case_id || ' | Title: ' || v_rec.title || ' | Evidence: ' || v_rec.evidence_id || ' (' || v_rec.evidence_type || ')');
+END LOOP;
+CLOSE cur_case_evidence;
+END;
+/
+9.2 Cursor FOR Loop Implementation
+DECLARE
+BEGIN
+DBMS_OUTPUT.PUT_LINE('--- DIGITAL EVIDENCE FILE SIZE AUDIT ---');
+FOR r IN (
+SELECT e.evidence_id, e.case_id, d.file_hash_sha256, d.size_mb
+FROM EVIDENCE e
+JOIN DIGITAL_EVIDENCE d ON e.evidence_id = d.evidence_id
+WHERE d.size_mb > 100.00
+) LOOP
+DBMS_OUTPUT.PUT_LINE('LARGE FILE DETECTED -> EV ID: ' || r.evidence_id || ' | Size: ' || r.size_mb || ' MB | SHA256: ' || SUBSTR(r.file_hash_sha256, 1, 16) || '...');
+END LOOP;
+END;
+/
+10. Transaction Control Language (TCL: COMMIT, ROLLBACK, SAVEPOINT)
+Transaction control ensures ACID compliance across multi-step evidence handling procedures.
+10.1 Transaction Control Demonstration
+-- Start Transaction
+INSERT INTO CASES VALUES ('CASE-2024-99', 'Transaction Test Case', CURRENT_TIMESTAMP, '0.0,0.0', 'open', 'OFF-101');
+SAVEPOINT sp_case_created;
+INSERT INTO EVIDENCE VALUES ('EV-999', 'CASE-2024-99', 'Digital Device', CURRENT_TIMESTAMP);
+SAVEPOINT sp_evidence_added;
+-- Simulate error condition and rollback to savepoint sp_case_created
+ROLLBACK TO sp_case_created;
+-- Verify EV-999 was rolled back, but CASE-2024-99 remains in uncommitted state
+SELECT COUNT(*) FROM EVIDENCE WHERE evidence_id = 'EV-999';
+-- Final Rollback to clear test transaction completely
+ROLLBACK;
+11. Testing & Verification Matrix
+To validate full functionality, a formal test matrix was executed against Oracle 11g:
+Test ID
+Feature Tested
+Input / Condition
+Expected Outcome
+Status
+TC-01
+Primary & Unique Key Constraints
+Insert duplicate badge_number 'BADGE-9081'
+ORA-00001: unique constraint violated
+PASSED
+TC-02
+Foreign Key Cascade Delete
+DELETE FROM CASES WHERE case_id = 'CASE-TEMP-99'
+Child rows in EVIDENCE deleted automatically
+PASSED
+TC-03
+Trigger Case Audit
+UPDATE CASES SET status = 'in_court' WHERE case_id = 'CASE-2024-02'
+Row inserted automatically into CASE_AUDIT_LOG
+PASSED
+TC-04
+Trigger Closed Case Check
+INSERT INTO EVIDENCE for closed CASE-2024-05
+ORA-20001 raised, insert blocked
+PASSED
+TC-05
+Stored Procedure Execution
+SP_REGISTER_NEW_CASE with valid officer ID
+Case registered successfully, COMMIT executed
+PASSED
+11.1 Final Verification Script
+SELECT 'OFFICERS' AS Table_Name, COUNT(*) AS Total_Rows FROM OFFICERS
+UNION ALL
+SELECT 'CASES', COUNT(*) FROM CASES
+UNION ALL
+SELECT 'EVIDENCE', COUNT(*) FROM EVIDENCE
+UNION ALL
+SELECT 'PHYSICAL_EVIDENCE', COUNT(*) FROM PHYSICAL_EVIDENCE
+UNION ALL
+SELECT 'DIGITAL_EVIDENCE', COUNT(*) FROM DIGITAL_EVIDENCE
+UNION ALL
+SELECT 'CUSTODY_LOG', COUNT(*) FROM CUSTODY_LOG
+UNION ALL
+SELECT 'CASE_AUDIT_LOG', COUNT(*) FROM CASE_AUDIT_LOG;
