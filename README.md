@@ -2,7 +2,7 @@
 
 **Team:** [Advaith Anish](https://github.com/Aith-7799) · [Vidisha Jain](https://github.com/vidisha2508) · [Celaidon](https://github.com/Celaidon)
 
-A full-stack implementation of the **ForenSys** design from the DBMS DA-2 report: the
+A full-stack implementation of the **ForenSys** design: the
 Oracle 11g schema, PL/SQL procedures and triggers are ported to **PostgreSQL**, wrapped in a
 Node/Express API with server-side role enforcement, and surfaced in a React UI covering all
 seven use cases from the use-case diagram.
@@ -39,7 +39,7 @@ ForenSys/
 ├── prisma/
 │   ├── schema.prisma             # Translated schema (snake_case via @map)
 │   ├── migrations/               # init migration: tables + CHECKs + triggers + functions
-│   └── seed.ts                   # DA-2 sample dataset + bcrypt hashes
+│   └── seed.ts                   # sample dataset + bcrypt hashes
 ├── scripts/
 │   └── smoke-test.mjs            # 60 API-level checks incl. role denials
 ├── src/                          # Express API
