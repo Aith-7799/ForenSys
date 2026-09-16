@@ -4,7 +4,14 @@ import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../auth/AuthContext';
 import { CASE_STATUSES, STATUS_LABELS } from '../lib/permissions';
-import type { CaseSummary, EvidenceItem, ReportItem, TimelineResponse } from '../lib/types';
+import type {
+  CaseSummary,
+  EvidenceItem,
+  ReportItem,
+  TimelineResponse,
+  SimilarCaseItem,
+  DuplicateEvidenceAlertItem,
+} from '../lib/types';
 import {
   EmptyState,
   ErrorBanner,
@@ -23,17 +30,32 @@ const EVENT_STYLES: Record<string, { dot: string; label: string }> = {
   status_change: { dot: 'bg-violet-500', label: 'Status' },
 };
 
-type Tab = 'timeline' | 'evidence' | 'custody' | 'reports';
+type Tab = 'timeline' | 'evidence' | 'custody' | 'reports' | 'similar';
 
 export function CaseDetailPage() {
   const { caseId = '' } = useParams();
   const { can } = useAuth();
   const [tab, setTab] = useState<Tab>('timeline');
   const [statusError, setStatusError] = useState<unknown>(null);
+  const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
 
   const timeline = useAsync(() => api.get<TimelineResponse>(`/api/cases/${caseId}/timeline`), [caseId]);
   const evidence = useAsync(() => api.get<{ evidence: EvidenceItem[] }>(`/api/evidence?caseId=${caseId}`), [caseId]);
   const reports = useAsync(() => api.get<{ reports: ReportItem[] }>(`/api/reports?caseId=${caseId}`), [caseId]);
+  const similar = useAsync(
+    () =>
+      can('VIEW_INTELLIGENCE')
+        ? api.get<{ similar: SimilarCaseItem[] }>(`/api/cases/${caseId}/similar?excludeClosed=false`)
+        : Promise.resolve({ similar: [] }),
+    [caseId, can('VIEW_INTELLIGENCE')],
+  );
+  const alerts = useAsync(
+    () =>
+      can('VIEW_INTELLIGENCE')
+        ? api.get<{ alerts: DuplicateEvidenceAlertItem[] }>(`/api/alerts/duplicate-evidence?caseId=${caseId}`)
+        : Promise.resolve({ alerts: [] }),
+    [caseId, can('VIEW_INTELLIGENCE')],
+  );
 
   const custodyLogs = (timeline.data?.timeline ?? []).filter((e) => e.kind === 'custody_transfer');
   const auditRows = timeline.data?.auditLog ?? [];
@@ -56,16 +78,30 @@ export function CaseDetailPage() {
     try {
       await api.patch(`/api/cases/${caseId}`, { status: next });
       timeline.reload();
+      similar.reload();
     } catch (err) {
       setStatusError(err);
     }
   }
 
-  const tabs: { id: Tab; label: string; count?: number }[] = [
+  const dupAlertsCount = alerts.data?.alerts?.length ?? 0;
+  const similarCount = similar.data?.similar?.length ?? 0;
+
+  const tabs: { id: Tab; label: string; count?: number; highlight?: boolean }[] = [
     { id: 'timeline', label: 'Timeline', count: timeline.data?.timeline.length },
     { id: 'evidence', label: 'Evidence', count: evidence.data?.evidence.length },
     { id: 'custody', label: 'Custody transfers', count: custodyLogs.length },
     { id: 'reports', label: 'Reports', count: reports.data?.reports.length },
+    ...(can('VIEW_INTELLIGENCE')
+      ? [
+          {
+            id: 'similar' as const,
+            label: 'Similar Cases & Linkage',
+            count: similarCount,
+            highlight: dupAlertsCount > 0,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -303,6 +339,58 @@ export function CaseDetailPage() {
       )}
 
       {/* ---------------------------------------------------------------- */}
+      {/* Duplicate Evidence Alert Banner */}
+      {(alerts.data?.alerts?.length ?? 0) > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-950">
+                Cross-Case Duplicate Evidence Detected ({alerts.data!.alerts.length} Match{alerts.data!.alerts.length > 1 ? 'es' : ''})
+              </h3>
+              <p className="mt-1 text-xs text-amber-800">
+                Automated database trigger detected identical digital evidence hashes or device serials across separate cases.
+              </p>
+              <div className="mt-3 divide-y divide-amber-200 border-t border-amber-200">
+                {alerts.data!.alerts.map((alt) => {
+                  const isIncoming = alt.caseIdNew === caseId;
+                  const otherCase = isIncoming ? alt.caseExisting : alt.caseNew;
+                  const otherCaseId = isIncoming ? alt.caseIdExisting : alt.caseIdNew;
+                  const matchedEv = isIncoming ? alt.matchedEvidence : alt.newEvidence;
+
+                  return (
+                    <div key={alt.alertId} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+                      <div>
+                        <span className="font-semibold uppercase tracking-wider text-amber-900">
+                          {alt.matchType === 'file_hash_sha256' ? 'Shared SHA-256 File Hash' : 'Matching Device Serial'}:
+                        </span>{' '}
+                        <span className="font-mono text-amber-950 font-medium">
+                          {matchedEv?.digital?.fileHashSha256
+                            ? `${matchedEv.digital.fileHashSha256.slice(0, 16)}...`
+                            : matchedEv?.digital?.deviceSerial}
+                        </span>{' '}
+                        <span>
+                          linking with{' '}
+                          <Link to={`/cases/${otherCaseId}`} className="font-semibold text-amber-900 underline hover:text-amber-950">
+                            {otherCase?.title ?? otherCaseId} ({otherCaseId})
+                          </Link>
+                        </span>
+                      </div>
+                      <Link
+                        to={`/cases/${otherCaseId}`}
+                        className="rounded bg-amber-200 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-300"
+                      >
+                        Inspect Linked Case →
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === 'reports' && (
         <div className="fs-card overflow-x-auto p-0">
           {reports.loading ? (
@@ -347,6 +435,133 @@ export function CaseDetailPage() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
+      {tab === 'similar' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-slate-900 p-4 text-white shadow">
+            <div>
+              <h2 className="text-base font-semibold">Case Correlation &amp; Pattern Intelligence</h2>
+              <p className="mt-0.5 text-xs text-slate-300">
+                Automated multi-vector scoring analyzing Digital Fingerprints (40%), Geospatial Proximity (25%), M.O. Evidence Overlap (20%), and Temporal Clustering (15%).
+              </p>
+            </div>
+            <Link
+              to={`/intelligence?caseId=${caseId}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-amber-400"
+            >
+              <span>Explore Network Graph</span> →
+            </Link>
+          </div>
+
+          {similar.loading ? (
+            <div className="fs-card">
+              <Spinner label="Computing multi-vector similarity matrix…" />
+            </div>
+          ) : (similar.data?.similar?.length ?? 0) === 0 ? (
+            <div className="fs-card p-6 text-center">
+              <EmptyState
+                title="No cross-case correlations found."
+                hint="No other cases meet the minimum similarity threshold for digital hashes, geographic proximity, or evidence profiles."
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {similar.data!.similar.map((item) => {
+                const isExpanded = expandedCaseId === item.caseId;
+                const matchTone =
+                  item.matchPercentage >= 70
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : item.matchPercentage >= 35
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                    : 'bg-slate-50 text-slate-700 border-slate-300';
+
+                return (
+                  <div
+                    key={item.caseId}
+                    className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-slate-300"
+                  >
+                    <div
+                      className="flex cursor-pointer flex-wrap items-center justify-between gap-4 p-4 hover:bg-slate-50"
+                      onClick={() => setExpandedCaseId(isExpanded ? null : item.caseId)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg border font-bold ${matchTone}`}
+                        >
+                          <span className="text-sm font-extrabold">{item.matchPercentage}%</span>
+                          <span className="text-[9px] uppercase tracking-tighter">Match</span>
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-semibold text-slate-500">{item.caseId}</span>
+                            <StatusPill status={item.status} />
+                            {item.hasDuplicateEvidenceAlert && (
+                              <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-rose-800 uppercase">
+                                Duplicate Hash/Serial Alert
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="mt-0.5 font-semibold text-slate-900">{item.title}</h3>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            Lead Officer: <span className="font-medium text-slate-700">{item.leadOfficer.fullName}</span> ({item.leadOfficer.badgeNumber}) • Incident:{' '}
+                            {formatDateTime(item.incidentTimestamp)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/cases/${item.caseId}`}
+                          className="fs-btn-secondary fs-btn text-xs"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View Case →
+                        </Link>
+                        <button
+                          type="button"
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                          aria-label="Toggle details"
+                        >
+                          <span className="text-sm">{isExpanded ? '▲' : '▼'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Breakdown details */}
+                    <div className={`border-t border-slate-100 bg-slate-50 px-4 py-3 ${isExpanded ? 'block' : 'hidden'}`}>
+                      <h4 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                        Correlation Breakdown &amp; Forensic Signals
+                      </h4>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {item.breakdown.map((vec) => (
+                          <div key={vec.vector} className="rounded-md border border-slate-200 bg-white p-2.5 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-medium text-slate-600">{vec.vector}</span>
+                              <span className="text-[11px] font-bold text-forensic-800">
+                                {vec.weightedScore} / {Math.round(vec.weight * 100)} pts
+                              </span>
+                            </div>
+                            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className={`h-full ${
+                                  vec.score > 0.7 ? 'bg-emerald-500' : vec.score > 0.3 ? 'bg-amber-500' : 'bg-slate-300'
+                                }`}
+                                style={{ width: `${Math.round(vec.score * 100)}%` }}
+                              />
+                            </div>
+                            <p className="mt-2 text-xs font-medium text-slate-800">{vec.evidence}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

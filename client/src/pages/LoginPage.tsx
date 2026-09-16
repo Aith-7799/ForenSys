@@ -32,7 +32,7 @@ export function LoginPage() {
   if (loading) return <Spinner label="Restoring session…" />;
   if (officer) {
     const from = (location.state as { from?: string } | null)?.from;
-    return <Navigate to={from ?? '/'} replace />;
+    return <Navigate to={from ?? '/cases'} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -41,7 +41,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(badgeNumber.trim(), password);
-      navigate('/', { replace: true });
+      navigate('/cases', { replace: true });
     } catch (err) {
       setError(err);
     } finally {

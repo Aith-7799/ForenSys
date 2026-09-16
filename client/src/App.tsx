@@ -12,6 +12,7 @@ import { CustodyPage } from './pages/CustodyPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
+import { CorrelationGraphPage } from './pages/CorrelationGraphPage';
 import { Spinner } from './components/ui';
 
 /** Sends each role to the first page it is actually allowed to open. */
@@ -54,6 +55,15 @@ export function App() {
           element={
             <ProtectedRoute permission="VIEW_CASE_DATA">
               <CasesPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Cross-Case Intelligence Graph */}
+        <Route
+          path="/intelligence"
+          element={
+            <ProtectedRoute permission="VIEW_INTELLIGENCE">
+              <CorrelationGraphPage />
             </ProtectedRoute>
           }
         />

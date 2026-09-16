@@ -16,6 +16,7 @@ interface NavItem {
  */
 const NAV: NavItem[] = [
   { to: '/cases', label: 'Cases & Timeline', permission: 'VIEW_CASE_DATA' },
+  { to: '/intelligence', label: 'Intelligence Graph', permission: 'VIEW_INTELLIGENCE' },
   { to: '/custody', label: 'Chain of Custody', permission: 'LOG_CUSTODY' },
   { to: '/reports', label: 'Lab & Witness Reports', permission: 'UPLOAD_REPORT' },
   { to: '/dashboard', label: 'Analytics Dashboard', permission: 'VIEW_DASHBOARD' },
@@ -72,10 +73,9 @@ export function Layout() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `border-b-2 px-3 py-2 text-sm transition-colors ${
-                    isActive
-                      ? 'border-amber-400 font-medium text-white'
-                      : 'border-transparent text-slate-300 hover:text-white'
+                  `border-b-2 px-3 py-2 text-sm transition-colors ${isActive
+                    ? 'border-amber-400 font-medium text-white'
+                    : 'border-transparent text-slate-300 hover:text-white'
                   }`
                 }
               >
@@ -92,7 +92,7 @@ export function Layout() {
 
       <footer className="border-t border-slate-200 bg-white px-4 py-3">
         <p className="mx-auto max-w-7xl text-xs text-slate-400">
-          ForenSys — DBMS DA-2 implementation (Oracle 11g design ported to PostgreSQL)
+          ForenSys- "Trust me, its Insane!"
         </p>
       </footer>
     </div>

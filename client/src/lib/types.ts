@@ -150,3 +150,61 @@ export interface RollupRow {
   evidenceType: string;
   itemCount: number;
 }
+
+export interface VectorBreakdown {
+  vector: 'Digital Fingerprints' | 'Geospatial Proximity' | 'Evidence Profile / M.O.' | 'Temporal Clustering';
+  score: number;
+  weight: number;
+  weightedScore: number;
+  evidence: string;
+  details?: Record<string, unknown>;
+}
+
+export interface SimilarCaseItem {
+  caseId: string;
+  title: string;
+  status: CaseStatus;
+  incidentTimestamp: string;
+  locationPoint: string;
+  leadOfficer: Officer;
+  matchPercentage: number;
+  breakdown: VectorBreakdown[];
+  hasDuplicateEvidenceAlert: boolean;
+}
+
+export interface DuplicateEvidenceAlertItem {
+  alertId: string;
+  newEvidenceId: string;
+  matchedEvidenceId: string;
+  matchType: string;
+  caseIdNew: string;
+  caseIdExisting: string;
+  createdAt: string;
+  newEvidence?: EvidenceItem;
+  matchedEvidence?: EvidenceItem;
+  caseNew?: { caseId: string; title: string; status: CaseStatus };
+  caseExisting?: { caseId: string; title: string; status: CaseStatus };
+}
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  status: CaseStatus;
+  locationPoint: string;
+  incidentTimestamp: string;
+  leadOfficerName: string;
+  evidenceCount: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  similarity: number;
+  tags: string[];
+}
+
+export interface CorrelationGraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+

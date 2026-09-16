@@ -425,7 +425,7 @@ async function main() {
   check(
     'ROLLUP emits grand-total and subtotal rows',
     (rollup.json?.rollup ?? []).some((r) => r.caseStatus === 'TOTAL ALL STATUSES') &&
-      (rollup.json?.rollup ?? []).some((r) => r.evidenceType === 'SUBTOTAL TYPE'),
+    (rollup.json?.rollup ?? []).some((r) => r.evidenceType === 'SUBTOTAL TYPE'),
   );
 
   // ---------------------------------------------------------------------
@@ -471,6 +471,54 @@ async function main() {
 
   const roles = await api('GET', '/api/officers/roles', { token: io });
   check('Officer directory is readable for pickers', roles.status === 200 && roles.json.roles.length === 4);
+
+  // ---------------------------------------------------------------------
+  // 7. Case Correlation & Similarity Engine
+  // ---------------------------------------------------------------------
+  console.log('\n7. Case Correlation & Similarity Engine');
+
+  const simCases = await api('GET', '/api/cases/CASE-2024-01/similar', { token: io });
+  check(
+    'GET /api/cases/:id/similar returns ranked similarity results with breakdowns',
+    simCases.status === 200 && Array.isArray(simCases.json.similar),
+  );
+
+  const graphData = await api('GET', '/api/cases/correlation-graph?minScore=10', { token: io });
+  check(
+    'GET /api/cases/correlation-graph returns graph topology with nodes and edges',
+    graphData.status === 200 && Array.isArray(graphData.json.nodes) && Array.isArray(graphData.json.edges),
+  );
+
+  // ---------------------------------------------------------------------
+  // 8. Duplicate Digital Evidence Database Trigger Test
+  // ---------------------------------------------------------------------
+  console.log('\n8. Duplicate Digital Evidence Database Trigger Test');
+
+  // Register a digital device in createdCaseId sharing the SHA-256 hash of EV-801 in CASE-2024-01
+  if (createdCaseId) {
+    const dupEvidence = await api('POST', '/api/evidence', {
+      token: io,
+      body: {
+        caseId: createdCaseId,
+        evidenceType: 'Digital Device',
+        collectionTimestamp: new Date().toISOString(),
+        digital: {
+          fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', // matches EV-801
+          mediaType: 'Disk Image (.raw)',
+          sizeMb: 50.0,
+          deviceSerial: 'SN-TEST-MATCH-01',
+        },
+      },
+    });
+    check('Evidence with duplicate hash is created successfully', dupEvidence.status === 201);
+
+    const alertCheck = await api('GET', `/api/alerts/duplicate-evidence?caseId=${createdCaseId}`, { token: io });
+    check(
+      'Trigger trg_duplicate_digital_evidence detected match and populated duplicate_evidence_alerts',
+      alertCheck.status === 200 && alertCheck.json.alerts.length >= 1,
+      `found ${alertCheck.json?.alerts?.length ?? 0} alert(s)`,
+    );
+  }
 
   // ---------------------------------------------------------------------
   // Cleanup: remove the smoke-test case (cascades to its evidence + custody rows)

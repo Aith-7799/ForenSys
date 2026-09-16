@@ -9,6 +9,7 @@ import { evidenceRouter } from './routes/evidence.js';
 import { custodyRouter } from './routes/custody.js';
 import { reportsRouter } from './routes/reports.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { alertsRouter } from './routes/alerts.js';
 import { PERMISSIONS, ROLES } from './lib/roles.js';
 
 export function createApp() {
@@ -44,6 +45,7 @@ export function createApp() {
   app.use('/api/custody', custodyRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/alerts', alertsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -9,6 +9,7 @@ import { CASE_STATUSES } from '../lib/roles.js';
 import { publicOfficer, serializeCase } from '../lib/serialize.js';
 import { parse } from '../lib/validate.js';
 import { currentOfficer, requireAuth, requirePermission } from '../middleware/auth.js';
+import { getSimilarCases, getCorrelationGraph } from '../lib/similarity.js';
 
 export const casesRouter = Router();
 
@@ -115,6 +116,34 @@ casesRouter.post(
     });
 
     res.status(201).json({ case: serializeCase(created) });
+  }),
+);
+
+/** GET /api/cases/correlation-graph — network of correlated cases above similarity threshold. */
+casesRouter.get(
+  '/correlation-graph',
+  requirePermission('VIEW_INTELLIGENCE'),
+  asyncHandler(async (req, res) => {
+    const minScore = req.query.minScore ? Number(req.query.minScore) : 15;
+    const excludeClosed = req.query.excludeClosed === 'true';
+
+    const graph = await getCorrelationGraph({ minScore, excludeClosed });
+    res.json(graph);
+  }),
+);
+
+/** GET /api/cases/:caseId/similar — ranked list of similar cases with multi-vector breakdown. */
+casesRouter.get(
+  '/:caseId/similar',
+  requirePermission('VIEW_INTELLIGENCE'),
+  asyncHandler(async (req, res) => {
+    const { caseId } = req.params;
+    const excludeClosed = req.query.excludeClosed !== 'false'; // default true
+    const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+
+    const similar = await getSimilarCases(caseId, { excludeClosed, minScore, limit });
+    res.json({ similar });
   }),
 );
 

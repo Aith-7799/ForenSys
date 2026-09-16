@@ -20,6 +20,7 @@ export const PERMISSIONS = {
     'System Administrator',
     'Judicial Authority',
   ],
+  VIEW_INTELLIGENCE: ['Investigating Officer', 'System Administrator'],
   VIEW_DASHBOARD: ['System Administrator'],
   MANAGE_USERS: ['System Administrator'],
   DELETE_RECORDS: ['System Administrator'],

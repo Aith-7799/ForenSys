@@ -592,3 +592,184 @@ UNION ALL
 SELECT 'CUSTODY_LOG', COUNT(*) FROM CUSTODY_LOG
 UNION ALL
 SELECT 'CASE_AUDIT_LOG', COUNT(*) FROM CASE_AUDIT_LOG;
+
+
+-- ============================================================================
+-- 12. CASE CORRELATION & SIMILARITY INTELLIGENCE (Oracle 11g DDL & PL/SQL)
+-- ============================================================================
+
+-- 12.1 Table: DUPLICATE_EVIDENCE_ALERT
+CREATE TABLE DUPLICATE_EVIDENCE_ALERT (
+    alert_id VARCHAR2(36) NOT NULL,
+    new_evidence_id VARCHAR2(36) NOT NULL,
+    matched_evidence_id VARCHAR2(36) NOT NULL,
+    match_type VARCHAR2(50) NOT NULL, -- 'file_hash_sha256' | 'device_serial'
+    case_id_new VARCHAR2(36) NOT NULL,
+    case_id_existing VARCHAR2(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT pk_dup_evidence_alert PRIMARY KEY (alert_id),
+    CONSTRAINT fk_alert_new_ev FOREIGN KEY (new_evidence_id) REFERENCES EVIDENCE(evidence_id) ON DELETE CASCADE,
+    CONSTRAINT fk_alert_matched_ev FOREIGN KEY (matched_evidence_id) REFERENCES EVIDENCE(evidence_id) ON DELETE CASCADE,
+    CONSTRAINT fk_alert_case_new FOREIGN KEY (case_id_new) REFERENCES CASES(case_id) ON DELETE CASCADE,
+    CONSTRAINT fk_alert_case_existing FOREIGN KEY (case_id_existing) REFERENCES CASES(case_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_alert_case_new ON DUPLICATE_EVIDENCE_ALERT(case_id_new);
+CREATE INDEX idx_alert_case_existing ON DUPLICATE_EVIDENCE_ALERT(case_id_existing);
+CREATE INDEX idx_dig_file_hash ON DIGITAL_EVIDENCE(file_hash_sha256);
+CREATE INDEX idx_dig_device_serial ON DIGITAL_EVIDENCE(device_serial);
+
+-- 12.2 Table: CASE_SIMILARITY_CACHE
+CREATE TABLE CASE_SIMILARITY_CACHE (
+    cache_id VARCHAR2(36) NOT NULL,
+    case_id_a VARCHAR2(36) NOT NULL,
+    case_id_b VARCHAR2(36) NOT NULL,
+    score NUMBER(5, 2) NOT NULL,
+    breakdown_json CLOB NOT NULL,
+    computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT pk_case_sim_cache PRIMARY KEY (cache_id),
+    CONSTRAINT fk_sim_case_a FOREIGN KEY (case_id_a) REFERENCES CASES(case_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sim_case_b FOREIGN KEY (case_id_b) REFERENCES CASES(case_id) ON DELETE CASCADE,
+    CONSTRAINT uk_sim_pair UNIQUE (case_id_a, case_id_b)
+);
+
+-- 12.3 Trigger: TRG_DUPLICATE_DIGITAL_EVIDENCE (Autonomous Transaction for alerting)
+CREATE OR REPLACE TRIGGER TRG_DUPLICATE_DIGITAL_EVIDENCE
+AFTER INSERT ON DIGITAL_EVIDENCE
+FOR EACH ROW
+DECLARE
+    PRAGMA AUTONOMOUS_TRANSACTION;
+    v_case_id_new VARCHAR2(36);
+BEGIN
+    SELECT case_id INTO v_case_id_new FROM EVIDENCE WHERE evidence_id = :NEW.evidence_id;
+
+    FOR r IN (
+        SELECT de.evidence_id AS matched_id,
+               e.case_id AS case_existing,
+               CASE
+                   WHEN de.file_hash_sha256 = :NEW.file_hash_sha256 THEN 'file_hash_sha256'
+                   ELSE 'device_serial'
+               END AS match_type
+        FROM DIGITAL_EVIDENCE de
+        JOIN EVIDENCE e ON de.evidence_id = e.evidence_id
+        WHERE de.evidence_id <> :NEW.evidence_id
+          AND e.case_id <> v_case_id_new
+          AND (de.file_hash_sha256 = :NEW.file_hash_sha256 OR de.device_serial = :NEW.device_serial)
+    ) LOOP
+        INSERT INTO DUPLICATE_EVIDENCE_ALERT (
+            alert_id, new_evidence_id, matched_evidence_id, match_type, case_id_new, case_id_existing, created_at
+        ) VALUES (
+            SYS_GUID(), :NEW.evidence_id, r.matched_id, r.match_type, v_case_id_new, r.case_existing, CURRENT_TIMESTAMP
+        );
+    END LOOP;
+    COMMIT;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        NULL;
+    WHEN OTHERS THEN
+        ROLLBACK;
+END TRG_DUPLICATE_DIGITAL_EVIDENCE;
+/
+
+-- 12.4 PL/SQL Package: PKG_CASE_SIMILARITY
+CREATE OR REPLACE PACKAGE PKG_CASE_SIMILARITY AS
+    -- Great-circle Haversine distance in kilometers
+    FUNCTION FN_HAVERSINE_KM(
+        p_lat1 NUMBER, p_lon1 NUMBER,
+        p_lat2 NUMBER, p_lon2 NUMBER
+    ) RETURN NUMBER;
+
+    -- Pairwise similarity calculation
+    FUNCTION FN_CALCULATE_PAIR_SCORE(
+        p_case_a VARCHAR2,
+        p_case_b VARCHAR2
+    ) RETURN NUMBER;
+END PKG_CASE_SIMILARITY;
+/
+
+CREATE OR REPLACE PACKAGE BODY PKG_CASE_SIMILARITY AS
+    C_EARTH_RADIUS_KM CONSTANT NUMBER := 6371.0;
+    C_PI             CONSTANT NUMBER := 3.14159265358979323846;
+
+    FUNCTION TO_RAD(deg NUMBER) RETURN NUMBER IS
+    BEGIN
+        RETURN deg * (C_PI / 180.0);
+    END TO_RAD;
+
+    FUNCTION FN_HAVERSINE_KM(
+        p_lat1 NUMBER, p_lon1 NUMBER,
+        p_lat2 NUMBER, p_lon2 NUMBER
+    ) RETURN NUMBER IS
+        dlat NUMBER;
+        dlon NUMBER;
+        a    NUMBER;
+        c    NUMBER;
+    BEGIN
+        dlat := TO_RAD(p_lat2 - p_lat1);
+        dlon := TO_RAD(p_lon2 - p_lon1);
+        a := SIN(dlat / 2) * SIN(dlat / 2) +
+             COS(TO_RAD(p_lat1)) * COS(TO_RAD(p_lat2)) * SIN(dlon / 2) * SIN(dlon / 2);
+        c := 2 * ATAN2(SQRT(a), SQRT(1 - a));
+        RETURN C_EARTH_RADIUS_KM * c;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN 99999.0;
+    END FN_HAVERSINE_KM;
+
+    FUNCTION FN_CALCULATE_PAIR_SCORE(
+        p_case_a VARCHAR2,
+        p_case_b VARCHAR2
+    ) RETURN NUMBER IS
+        v_score NUMBER := 0;
+        v_digital_hits NUMBER := 0;
+        v_jaccard_num NUMBER := 0;
+        v_jaccard_den NUMBER := 0;
+        v_ts_diff_hrs NUMBER := 0;
+    BEGIN
+        -- 1. Digital Fingerprints (40%)
+        SELECT COUNT(*) INTO v_digital_hits
+        FROM DIGITAL_EVIDENCE d1
+        JOIN EVIDENCE e1 ON d1.evidence_id = e1.evidence_id
+        JOIN DIGITAL_EVIDENCE d2 ON (d1.file_hash_sha256 = d2.file_hash_sha256 OR d1.device_serial = d2.device_serial)
+        JOIN EVIDENCE e2 ON d2.evidence_id = e2.evidence_id
+        WHERE e1.case_id = p_case_a AND e2.case_id = p_case_b;
+
+        IF v_digital_hits > 0 THEN
+            v_score := v_score + 40;
+        END IF;
+
+        -- 2. Evidence Type Jaccard (20%)
+        SELECT COUNT(DISTINCT e1.evidence_type) INTO v_jaccard_num
+        FROM EVIDENCE e1
+        JOIN EVIDENCE e2 ON e1.evidence_type = e2.evidence_type
+        WHERE e1.case_id = p_case_a AND e2.case_id = p_case_b;
+
+        SELECT COUNT(DISTINCT evidence_type) INTO v_jaccard_den
+        FROM EVIDENCE
+        WHERE case_id IN (p_case_a, p_case_b);
+
+        IF v_jaccard_den > 0 THEN
+            v_score := v_score + (20 * (v_jaccard_num / v_jaccard_den));
+        END IF;
+
+        -- 3. Temporal Clustering (15%)
+        SELECT ABS(EXTRACT(DAY FROM (c1.incident_timestamp - c2.incident_timestamp))*24 +
+                   EXTRACT(HOUR FROM (c1.incident_timestamp - c2.incident_timestamp)))
+        INTO v_ts_diff_hrs
+        FROM CASES c1, CASES c2
+        WHERE c1.case_id = p_case_a AND c2.case_id = p_case_b;
+
+        IF v_ts_diff_hrs <= 72 THEN
+            v_score := v_score + 15;
+        ELSIF v_ts_diff_hrs <= 720 THEN
+            v_score := v_score + (15 * (1 - (v_ts_diff_hrs / 720)));
+        END IF;
+
+        RETURN LEAST(ROUND(v_score, 2), 100);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN 0;
+    END FN_CALCULATE_PAIR_SCORE;
+END PKG_CASE_SIMILARITY;
+/
+

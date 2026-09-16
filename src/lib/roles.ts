@@ -48,6 +48,8 @@ export const PERMISSIONS = {
     ROLES.SYSTEM_ADMINISTRATOR,
     ROLES.JUDICIAL_AUTHORITY,
   ],
+  /** View Cross-Case Intelligence Graph & Correlation Matrix (Detectives & Admins) */
+  VIEW_INTELLIGENCE: [ROLES.INVESTIGATING_OFFICER, ROLES.SYSTEM_ADMINISTRATOR],
   /** View Analytics Dashboard */
   VIEW_DASHBOARD: [ROLES.SYSTEM_ADMINISTRATOR],
   /** Manage users (create/update/delete officers, reset passwords) */

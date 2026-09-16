@@ -56,6 +56,10 @@ model Case {
   leadOfficer Officer    @relation("LeadOfficer", fields: [leadOfficerId], references: [officerId], onDelete: Restrict, onUpdate: Cascade)
   evidence    Evidence[]
   reports     Report[]
+  newAlerts      DuplicateEvidenceAlert[] @relation("CaseNewAlerts")
+  existingAlerts DuplicateEvidenceAlert[] @relation("CaseExistingAlerts")
+  similaritiesA  CaseSimilarityCache[]    @relation("CaseSimilarityA")
+  similaritiesB  CaseSimilarityCache[]    @relation("CaseSimilarityB")
 
   // NOTE: CASE_AUDIT_LOG is intentionally NOT a relation here. Oracle declares no foreign key
   // on case_audit_log.case_id, so the audit trail survives a cascading case delete. Query it
@@ -74,11 +78,13 @@ model Evidence {
   evidenceType        String   @map("evidence_type") @db.VarChar(50)
   collectionTimestamp DateTime @map("collection_timestamp") @db.Timestamp(6)
 
-  case        Case              @relation(fields: [caseId], references: [caseId], onDelete: Cascade, onUpdate: Cascade)
-  physical    PhysicalEvidence?
-  digital     DigitalEvidence?
-  custodyLogs CustodyLog[]
-  reports     Report[]
+  case          Case              @relation(fields: [caseId], references: [caseId], onDelete: Cascade, onUpdate: Cascade)
+  physical      PhysicalEvidence?
+  digital       DigitalEvidence?
+  custodyLogs   CustodyLog[]
+  reports       Report[]
+  newAlerts     DuplicateEvidenceAlert[] @relation("NewEvidenceAlerts")
+  matchedAlerts DuplicateEvidenceAlert[] @relation("MatchedEvidenceAlerts")
 
   @@index([caseId])
   @@map("evidence")
@@ -106,6 +112,8 @@ model DigitalEvidence {
 
   evidence Evidence @relation(fields: [evidenceId], references: [evidenceId], onDelete: Cascade, onUpdate: Cascade)
 
+  @@index([fileHashSha256])
+  @@index([deviceSerial])
   @@map("digital_evidence")
 }
 
@@ -169,3 +177,44 @@ model Report {
   @@index([evidenceId])
   @@map("reports")
 }
+
+/// DUPLICATE_EVIDENCE_ALERT — recorded by trigger when digital evidence matches an existing item in another case.
+model DuplicateEvidenceAlert {
+  alertId           String   @id @default(uuid()) @map("alert_id") @db.VarChar(36)
+  newEvidenceId     String   @map("new_evidence_id") @db.VarChar(36)
+  matchedEvidenceId String   @map("matched_evidence_id") @db.VarChar(36)
+  matchType         String   @map("match_type") @db.VarChar(50) // 'file_hash_sha256' | 'device_serial'
+  caseIdNew         String   @map("case_id_new") @db.VarChar(36)
+  caseIdExisting    String   @map("case_id_existing") @db.VarChar(36)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  newEvidence     Evidence @relation("NewEvidenceAlerts", fields: [newEvidenceId], references: [evidenceId], onDelete: Cascade)
+  matchedEvidence Evidence @relation("MatchedEvidenceAlerts", fields: [matchedEvidenceId], references: [evidenceId], onDelete: Cascade)
+  caseNew         Case     @relation("CaseNewAlerts", fields: [caseIdNew], references: [caseId], onDelete: Cascade)
+  caseExisting    Case     @relation("CaseExistingAlerts", fields: [caseIdExisting], references: [caseId], onDelete: Cascade)
+
+  @@index([caseIdNew])
+  @@index([caseIdExisting])
+  @@index([newEvidenceId])
+  @@index([matchedEvidenceId])
+  @@map("duplicate_evidence_alerts")
+}
+
+/// CASE_SIMILARITY_CACHE — optional precomputed pairwise score cache.
+model CaseSimilarityCache {
+  cacheId         String   @id @default(uuid()) @map("cache_id") @db.VarChar(36)
+  caseIdA         String   @map("case_id_a") @db.VarChar(36)
+  caseIdB         String   @map("case_id_b") @db.VarChar(36)
+  score           Decimal  @map("score") @db.Decimal(5, 2)
+  breakdownJson   String   @map("breakdown_json") @db.Text
+  computedAt      DateTime @default(now()) @map("computed_at") @db.Timestamp(6)
+
+  caseA Case @relation("CaseSimilarityA", fields: [caseIdA], references: [caseId], onDelete: Cascade)
+  caseB Case @relation("CaseSimilarityB", fields: [caseIdB], references: [caseId], onDelete: Cascade)
+
+  @@unique([caseIdA, caseIdB])
+  @@index([caseIdA])
+  @@index([caseIdB])
+  @@map("case_similarity_cache")
+}
+
