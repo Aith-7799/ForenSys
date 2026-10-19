@@ -13,7 +13,7 @@ fi
 
 OWNER="Aith-7799"
 REPO="ForenSys"
-DESCRIPTION="MongoDB-backed forensic evidence management system"
+DESCRIPTION="ForenSys - Digital Crime Scene Evidence and Investigation Management System"
 
 curl -sS -L \
   -X PATCH \
