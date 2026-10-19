@@ -19,8 +19,8 @@ surfaced in a React UI covering all seven use cases from the use-case diagram.
 
 | Layer     | Technology                                                    |
 | --------- | ------------------------------------------------------------- |
-| Database  | MongoDB (migration in progress; PostgreSQL/Prisma is current) |
-| ODM       | Mongoose (planned replacement for Prisma)                      |
+| Database  | PostgreSQL 16 (Docker) — migration target is MongoDB          |
+| ORM       | Prisma 6 — schema in `prisma/schema.prisma`                   |
 | Backend   | Node.js + Express 4 + TypeScript                              |
 | Auth      | JWT access + refresh tokens, bcrypt password hashing          |
 | Frontend  | React 18 + TypeScript + Vite 6 + Tailwind CSS 4 + React Router |
@@ -174,13 +174,16 @@ one-to-one with the running database.
 - **`reports` table** — stores uploaded lab/witness report files (the original report had no
   storage for the "Upload Laboratory and Witness Reports" use case). `custody_log.mongo_doc_ref`
   points at a `report_id` when a custody transfer carries a report.
-- **`custody_log.mongo_doc_ref` widened** from `VARCHAR2(24)` to `TEXT` so it can hold either an
-  external document-store ObjectId or a report pointer.
+- **`custody_log.mongo_doc_ref` widened** from `VARCHAR2(24)` to `TEXT` so the same column can still
+  hold either an external document-store ObjectId or a report pointer.
 - **`sp_change_case_status(case_id, new_status, changed_by)`** — replaces Oracle's `USER`
   pseudo-column, which has no Postgres equivalent (it would always return the connection role).
   The function publishes the acting officer into the transaction-local `app.current_user` setting
   and then performs the `UPDATE`. The **trigger still writes the audit row** — no application code
   inserts into `CASE_AUDIT_LOG`, exactly as intended.
+
+> **Naming note.** `mongo_doc_ref` is a legacy column name from the original report's document-store
+> concept. It is stored as `TEXT` and does not mean the project currently uses MongoDB for this table.
 
 ---
 
@@ -298,7 +301,7 @@ docker exec forensys-db psql -U forensys -d forensys -c \
 | Variable                 | Default                                                          | Purpose                          |
 | ------------------------ | ---------------------------------------------------------------- | -------------------------------- |
 | `DATABASE_URL`           | `postgresql://forensys:forensys@localhost:5432/forensys?schema=public` | Current Prisma/PostgreSQL connection string    |
-| `MONGODB_URI`            | —                                                                | Future MongoDB connection string (migration target) |
+| `MONGODB_URI`            | —                                                                | Planned MongoDB connection string (migration target, not yet used by the app) |
 | `JWT_SECRET`             | —                                                                | Access-token signing key         |
 | `JWT_EXPIRES_IN`         | `15m`                                                            | Access-token lifetime            |
 | `JWT_REFRESH_SECRET`     | —                                                                | Refresh-token signing key        |
