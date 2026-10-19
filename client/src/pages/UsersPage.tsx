@@ -186,16 +186,16 @@ export function UsersPage() {
           </button>
         </form>
 
-        <div className="fs-card overflow-x-auto p-0 lg:col-span-2">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="font-semibold text-forensic-900">Officers</h2>
+        <div className="fs-table-card overflow-x-auto p-0 lg:col-span-2">
+          <div className="border-b border-white/10 px-5 py-4">
+            <h2 className="font-semibold text-white">Officers</h2>
           </div>
 
           {officers.loading ? (
             <Spinner label="Loading officers…" />
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="fs-th">Badge</th>
                   <th className="fs-th">Name</th>
@@ -203,14 +203,14 @@ export function UsersPage() {
                   <th className="fs-th" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {(officers.data?.officers ?? []).map((o) => (
-                  <tr key={o.officerId} className={o.officerId === me?.officerId ? 'bg-amber-50' : ''}>
-                    <td className="fs-td font-mono text-xs">{o.badgeNumber}</td>
+                  <tr key={o.officerId} className={o.officerId === me?.officerId ? 'bg-amber-400/10' : ''}>
+                    <td className="fs-td font-mono text-xs text-sky-300">{o.badgeNumber}</td>
                     <td className="fs-td">
                       {o.fullName}
                       {o.officerId === me?.officerId && (
-                        <span className="ml-2 text-xs text-amber-700">(you)</span>
+                        <span className="ml-2 text-xs text-amber-300">(you)</span>
                       )}
                     </td>
                     <td className="fs-td">
@@ -232,12 +232,12 @@ export function UsersPage() {
                     <td className="fs-td text-right whitespace-nowrap">
                       <button
                         type="button"
-                        className="text-xs font-medium text-forensic-600 hover:underline"
+                        className="text-xs font-medium text-sky-300 hover:underline"
                         onClick={() => resetPassword(o)}
                       >
                         Reset password
                       </button>
-                      <span className="mx-2 text-slate-300">|</span>
+                      <span className="mx-2 text-slate-600">|</span>
                       <button
                         type="button"
                         className="text-xs font-medium text-red-600 hover:underline"

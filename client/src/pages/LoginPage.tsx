@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner, Spinner } from '../components/ui';
+import Velaris from '../components/ui/velaris';
 
 /**
  * Use case 1: Authenticate User.
@@ -14,10 +15,16 @@ const DEMO_ACCOUNTS = [
   { badgeNumber: 'BADGE-9081', name: 'Det. Robert Vance', role: 'Investigating Officer' },
   { badgeNumber: 'BADGE-9082', name: 'Dr. Sarah Connor', role: 'Lab Analyst' },
   { badgeNumber: 'BADGE-9083', name: 'Admin Marcus Wright', role: 'System Administrator' },
+  { badgeNumber: 'BADGE-9084', name: 'Det. Elena Rostova', role: 'Investigating Officer' },
   { badgeNumber: 'BADGE-9085', name: 'Judge Arthur Pendelton', role: 'Judicial Authority' },
+  { badgeNumber: 'BADGE-9086', name: 'Dr. Alan Turing', role: 'Lab Analyst' },
 ];
 
 const DEMO_PASSWORD = 'Forensys@123';
+
+/** Velaris aurora palette for the login hero (module-level: stable identity). */
+const LOGO_BG = '#0a1226';
+const LOGO_COLORS = ['#3f5a86', '#0ea5e9', '#d97706', '#1a2740'];
 
 export function LoginPage() {
   const { officer, loading, login } = useAuth();
@@ -56,8 +63,19 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-forensic-900 px-4 py-10">
-      <div className="grid w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2">
+    /*
+     * Velaris hero: the animated WebGL gradient fills the whole viewport and the
+     * sign-in card sits in its children overlay.
+     */
+    <Velaris
+      height="auto"
+      className="flex min-h-full items-center justify-center px-4 py-10"
+      bg={LOGO_BG}
+      colors={LOGO_COLORS}
+      speed={1.5}
+      grain={0.3}
+    >
+    <div className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2">
         {/* Brand panel */}
         <div className="bg-forensic-900 px-8 py-10 text-white">
           <h1 className="text-3xl font-semibold tracking-tight">ForenSys</h1>
@@ -149,6 +167,6 @@ export function LoginPage() {
           </div>
         </div>
       </div>
-    </div>
+    </Velaris>
   );
 }

@@ -60,6 +60,24 @@ const CASES = [
   { caseId: 'CASE-2024-03', title: 'Corporate Financial Fraud Audit', incidentTimestamp: ts(2024, 3, 1, 11, 0), locationPoint: '41.8781,-87.6298', status: 'in_court', leadOfficerId: 'OFF-101' },
   { caseId: 'CASE-2024-04', title: 'Harbor Warehouse Narcotics Seizure', incidentTimestamp: ts(2024, 3, 20, 2, 45), locationPoint: '25.7617,-80.1918', status: 'open', leadOfficerId: 'OFF-104' },
   { caseId: 'CASE-2024-05', title: 'Metro Jewelry Store Robbery', incidentTimestamp: ts(2024, 4, 5, 14, 20), locationPoint: '37.7749,-122.4194', status: 'closed', leadOfficerId: 'OFF-101' },
+  // --- Intelligence-graph extension ------------------------------------------------
+  // Four extra cases laid out so the Cross-Case Intelligence Graph lights up:
+  //
+  //   * CASE-2024-06 was breached with the SAME device serial as CASE-2024-01's
+  //     server (SN-SERVER-9921 reuse) two days later, ~2 km away -> 100% edge.
+  //   * CASE-2024-09 in Seattle seized a drive carrying a byte-for-byte copy of
+  //     CASE-2024-01's disk image (same SHA-256) -> long-distance 65% edge that
+  //     proves hash correlation ignores geography, plus a duplicate-alert flag.
+  //   * CASE-2024-07 (Queens) links to 01 and 06 via media type / M.O. / temporal
+  //     decay -> ~53% edges of mixed provenance.
+  //   * CASE-2024-08 forms a purely geospatial + temporal + M.O. clone of
+  //     CASE-2024-04 in the Miami hotspot -> 50% edge with no digital evidence.
+  //   * CASE-2024-03 stays intentionally isolated (< 15%) so the graph also shows
+  //     unconnected cases.
+  { caseId: 'CASE-2024-06', title: 'Fintech Office Ransomware Breach', incidentTimestamp: ts(2024, 1, 17, 9, 10), locationPoint: '40.7259,-73.9911', status: 'under_investigation', leadOfficerId: 'OFF-101' },
+  { caseId: 'CASE-2024-07', title: 'Queens Data Center Exfiltration', incidentTimestamp: ts(2024, 1, 20, 15, 0), locationPoint: '40.7282,-73.7949', status: 'open', leadOfficerId: 'OFF-104' },
+  { caseId: 'CASE-2024-08', title: 'Brickell Money-Mule Arrest', incidentTimestamp: ts(2024, 3, 19, 4, 30), locationPoint: '25.7743,-80.1937', status: 'in_court', leadOfficerId: 'OFF-104' },
+  { caseId: 'CASE-2024-09', title: 'Seattle Cloud Storage Seizure', incidentTimestamp: ts(2024, 1, 18, 12, 0), locationPoint: '47.6062,-122.3321', status: 'open', leadOfficerId: 'OFF-101' },
 ];
 
 const EVIDENCE = [
@@ -70,17 +88,30 @@ const EVIDENCE = [
   { evidenceId: 'EV-805', caseId: 'CASE-2024-03', evidenceType: 'Digital Device', collectionTimestamp: ts(2024, 3, 1, 14, 0) },
   { evidenceId: 'EV-806', caseId: 'CASE-2024-04', evidenceType: 'Other', collectionTimestamp: ts(2024, 3, 20, 4, 0) },
   { evidenceId: 'EV-807', caseId: 'CASE-2024-05', evidenceType: 'Fingerprint', collectionTimestamp: ts(2024, 4, 5, 16, 30) },
+  { evidenceId: 'EV-808', caseId: 'CASE-2024-06', evidenceType: 'Digital Device', collectionTimestamp: ts(2024, 1, 17, 11, 0) },
+  { evidenceId: 'EV-809', caseId: 'CASE-2024-07', evidenceType: 'Digital Device', collectionTimestamp: ts(2024, 1, 20, 17, 30) },
+  { evidenceId: 'EV-810', caseId: 'CASE-2024-08', evidenceType: 'Weapon', collectionTimestamp: ts(2024, 3, 19, 5, 0) },
+  { evidenceId: 'EV-811', caseId: 'CASE-2024-08', evidenceType: 'Other', collectionTimestamp: ts(2024, 3, 19, 5, 45) },
+  { evidenceId: 'EV-812', caseId: 'CASE-2024-09', evidenceType: 'Digital Device', collectionTimestamp: ts(2024, 1, 18, 14, 0) },
 ];
 
 const PHYSICAL_EVIDENCE = [
   { evidenceId: 'EV-803', storageLockerNumber: 'LOCKER-A12', sealNumber: 'SEAL-99401', containerType: 'Heavy Metal Vault Container' },
   { evidenceId: 'EV-804', storageLockerNumber: 'LOCKER-B04', sealNumber: 'SEAL-99402', containerType: 'Sterile Biohazard Refrigerated Pack' },
   { evidenceId: 'EV-806', storageLockerNumber: 'LOCKER-C09', sealNumber: 'SEAL-99403', containerType: 'Sealed Narcotics Evidence Bag' },
+  { evidenceId: 'EV-810', storageLockerNumber: 'LOCKER-D02', sealNumber: 'SEAL-99404', containerType: 'Heavy Metal Vault Container' },
+  { evidenceId: 'EV-811', storageLockerNumber: 'LOCKER-D03', sealNumber: 'SEAL-99405', containerType: 'Sealed Evidence Bag' },
 ];
 
 const DIGITAL_EVIDENCE = [
   { evidenceId: 'EV-801', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1500.50'), deviceSerial: 'SN-SERVER-9921' },
   { evidenceId: 'EV-805', fileHashSha256: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4', mediaType: 'Database Dump (.sql)', sizeMb: new Prisma.Decimal('450.75'), deviceSerial: 'SN-LAPTOP-4410' },
+  // SN-SERVER-9921 deliberately REUSES the serial of EV-801 (CASE-2024-01):
+  // stolen server redeployed into the CASE-2024-06 breach -> 40% digital vector.
+  { evidenceId: 'EV-808', fileHashSha256: '6d2f4b8e1a3c5d7f09ab8c2e4f6a1b3d5c7e9f0a2b4d6c8e0a2b4d6f8c1e3a5b', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1320.00'), deviceSerial: 'SN-SERVER-9921' },
+  { evidenceId: 'EV-809', fileHashSha256: '1b4c9e2a7d3f6b8c0a5e1d9f3c7b2a6e4d8f0c3b7a1e5d9c3f7b2a6e0d4c8f1a', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('980.25'), deviceSerial: 'SN-TOWER-7734' },
+  // The EXACT hash of EV-801 appears again in Seattle: the same image was re-uploaded.
+  { evidenceId: 'EV-812', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1500.50'), deviceSerial: 'SN-RACK-2210' },
 ];
 
 const CUSTODY_LOG = [
@@ -89,6 +120,9 @@ const CUSTODY_LOG = [
   { logId: 'LOG-5003', evidenceId: 'EV-803', releasedById: 'OFF-104', receivedById: 'OFF-102', transferTimestamp: ts(2024, 2, 11, 8, 0), mongoDocRef: '65b2f11a9a8c123456789a03' },
   { logId: 'LOG-5004', evidenceId: 'EV-804', releasedById: 'OFF-104', receivedById: 'OFF-102', transferTimestamp: ts(2024, 2, 11, 8, 30), mongoDocRef: '65b2f11a9a8c123456789a04' },
   { logId: 'LOG-5005', evidenceId: 'EV-805', releasedById: 'OFF-101', receivedById: 'OFF-106', transferTimestamp: ts(2024, 3, 2, 10, 15), mongoDocRef: '65b2f11a9a8c123456789a05' },
+  { logId: 'LOG-5010', evidenceId: 'EV-808', releasedById: 'OFF-101', receivedById: 'OFF-102', transferTimestamp: ts(2024, 1, 17, 18, 0), mongoDocRef: '65b2f11a9a8c123456789a06' },
+  { logId: 'LOG-5011', evidenceId: 'EV-810', releasedById: 'OFF-104', receivedById: 'OFF-102', transferTimestamp: ts(2024, 3, 19, 9, 0), mongoDocRef: '65b2f11a9a8c123456789a07' },
+  { logId: 'LOG-5012', evidenceId: 'EV-812', releasedById: 'OFF-101', receivedById: 'OFF-106', transferTimestamp: ts(2024, 1, 18, 16, 0), mongoDocRef: '65b2f11a9a8c123456789a08' },
 ];
 
 // ---------------------------------------------------------------------------

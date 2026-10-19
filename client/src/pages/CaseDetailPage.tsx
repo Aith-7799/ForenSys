@@ -242,7 +242,7 @@ export function CaseDetailPage() {
 
       {/* ---------------------------------------------------------------- */}
       {tab === 'evidence' && (
-        <div className="fs-card overflow-x-auto p-0">
+        <div className="fs-table-card overflow-x-auto p-0">
           {evidence.loading ? (
             <Spinner label="Loading evidence…" />
           ) : (evidence.data?.evidence.length ?? 0) === 0 ? (
@@ -253,8 +253,8 @@ export function CaseDetailPage() {
               />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="fs-th">Evidence ID</th>
                   <th className="fs-th">Type</th>
@@ -263,9 +263,9 @@ export function CaseDetailPage() {
                   <th className="fs-th" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {evidence.data!.evidence.map((item) => (
-                  <tr key={item.evidenceId} className="hover:bg-slate-50">
+                  <tr key={item.evidenceId} className="hover:bg-white/5">
                     <td className="fs-td font-mono text-xs">{item.evidenceId}</td>
                     <td className="fs-td">
                       <Pill tone={item.digital ? 'indigo' : 'green'}>{item.evidenceType}</Pill>
@@ -308,14 +308,14 @@ export function CaseDetailPage() {
 
       {/* ---------------------------------------------------------------- */}
       {tab === 'custody' && (
-        <div className="fs-card overflow-x-auto p-0">
+        <div className="fs-table-card overflow-x-auto p-0">
           {custodyLogs.length === 0 ? (
             <div className="p-5">
               <EmptyState title="No custody transfers recorded for this case." />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="fs-th">Log ID</th>
                   <th className="fs-th">When</th>
@@ -323,13 +323,13 @@ export function CaseDetailPage() {
                   <th className="fs-th">Reference</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {custodyLogs.map((log) => (
                   <tr key={log.refId}>
                     <td className="fs-td font-mono text-xs">{log.refId}</td>
                     <td className="fs-td whitespace-nowrap">{formatDateTime(log.at)}</td>
                     <td className="fs-td">{log.title}</td>
-                    <td className="fs-td font-mono text-xs text-slate-500">{log.detail}</td>
+                    <td className="fs-td font-mono text-xs text-slate-400">{log.detail}</td>
                   </tr>
                 ))}
               </tbody>
@@ -392,7 +392,7 @@ export function CaseDetailPage() {
       )}
 
       {tab === 'reports' && (
-        <div className="fs-card overflow-x-auto p-0">
+        <div className="fs-table-card overflow-x-auto p-0">
           {reports.loading ? (
             <Spinner label="Loading reports…" />
           ) : (reports.data?.reports.length ?? 0) === 0 ? (
@@ -403,8 +403,8 @@ export function CaseDetailPage() {
               />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="fs-th">File</th>
                   <th className="fs-th">Type</th>
@@ -414,7 +414,7 @@ export function CaseDetailPage() {
                   <th className="fs-th" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {reports.data!.reports.map((r) => (
                   <tr key={r.reportId}>
                     <td className="fs-td font-medium">{r.fileName}</td>

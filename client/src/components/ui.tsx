@@ -101,8 +101,14 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-forensic-900">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        {/* Light text + soft shadow: PageHeader sits directly on the dark
+            aurora page background (Layout), not on white cards. */}
+        <h1 className="text-2xl font-semibold text-white [text-shadow:0_1px_3px_rgba(2,6,23,0.8)]">{title}</h1>
+        {subtitle && (
+          <p className="mt-1 text-sm text-slate-300 [text-shadow:0_1px_2px_rgba(2,6,23,0.8)]">
+            {subtitle}
+          </p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

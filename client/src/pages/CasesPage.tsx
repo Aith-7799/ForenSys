@@ -114,9 +114,9 @@ export function CasesPage() {
       ) : !data || data.cases.length === 0 ? (
         <EmptyState title="No cases match these filters." hint="Try clearing the search or status filter." />
       ) : (
-        <div className="fs-card overflow-x-auto p-0">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+        <div className="fs-table-card overflow-x-auto p-0">
+          <table className="min-w-full divide-y divide-white/10">
+            <thead className="bg-white/5">
               <tr>
                 <th className="fs-th">Case ID</th>
                 <th className="fs-th">Title</th>
@@ -128,11 +128,11 @@ export function CasesPage() {
                 <th className="fs-th" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-white/5">
               {data.cases.map((c) => (
-                <tr key={c.caseId} className="hover:bg-slate-50">
-                  <td className="fs-td font-mono text-xs">{c.caseId}</td>
-                  <td className="fs-td font-medium text-forensic-900">{c.title}</td>
+                <tr key={c.caseId} className="hover:bg-white/5">
+                  <td className="fs-td font-mono text-xs text-sky-300">{c.caseId}</td>
+                  <td className="fs-td font-medium text-white">{c.title}</td>
                   <td className="fs-td whitespace-nowrap">{formatDateTime(c.incidentTimestamp)}</td>
                   <td className="fs-td font-mono text-xs">{c.locationPoint}</td>
                   <td className="fs-td">{c.leadOfficer?.fullName ?? c.leadOfficerId}</td>
@@ -141,7 +141,7 @@ export function CasesPage() {
                     <StatusPill status={c.status} />
                   </td>
                   <td className="fs-td text-right">
-                    <Link to={`/cases/${c.caseId}`} className="font-medium text-forensic-600 hover:underline">
+                    <Link to={`/cases/${c.caseId}`} className="font-medium text-sky-300 hover:underline">
                       View
                     </Link>
                   </td>

@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { Permission } from '../lib/permissions';
 import { Pill } from './ui';
+import Velaris from './ui/velaris';
 
 interface NavItem {
   to: string;
@@ -30,6 +31,14 @@ const ROLE_TONE: Record<string, 'green' | 'indigo' | 'rose' | 'slate'> = {
   'Judicial Authority': 'slate',
 };
 
+/**
+ * Velaris aurora palette, tuned to the ForenSys blue/amber brand.
+ * Module-level so the array identity stays stable: the Velaris shader
+ * re-initialises its WebGL program whenever the `colors` prop changes.
+ */
+const AURORA_BG = '#070b16';
+const AURORA_COLORS = ['#3f5a86', '#0ea5e9', '#d97706', '#1a2740'];
+
 export function Layout() {
   const { officer, logout, can } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +52,27 @@ export function Layout() {
 
   return (
     <div className="flex min-h-full flex-col">
+      {/*
+       * Velaris aurora: a fixed, click-through WebGL background. It lives in its
+       * own wrapper div whose positioning is set with INLINE styles — inline
+       * `position/inset/zIndex` cannot be overridden by the component's own
+       * className/style props, so the canvas can never leak into document flow
+       * and push the page content down.
+       */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none"
+        style={{ position: 'fixed', inset: 0, zIndex: -10 }}
+      >
+        <Velaris
+          bg={AURORA_BG}
+          colors={AURORA_COLORS}
+          speed={1.5}
+          grain={0.25}
+          height="100%"
+        />
+      </div>
+
       <header className="border-b border-slate-200 bg-forensic-900 text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
