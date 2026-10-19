@@ -3,14 +3,15 @@
 **Team:** [Advaith Anish](https://github.com/Aith-7799) · [Vidisha Jain](https://github.com/vidisha2508) · [Celaidon](https://github.com/Celaidon)
 
 A full-stack implementation of the **ForenSys** design: the
-Oracle 11g schema, PL/SQL procedures and triggers are ported to **PostgreSQL**, wrapped in a
-Node/Express API with server-side role enforcement, and surfaced in a React UI covering all
-seven use cases from the use-case diagram.
+Oracle 11g schema, PL/SQL procedures and triggers are ported to **PostgreSQL** and are being
+migrated to **MongoDB**, wrapped in a Node/Express API with server-side role enforcement, and
+surfaced in a React UI covering all seven use cases from the use-case diagram.
 
 > **Original coursework artefacts**
 > `docs/oracle-11g-reference.sql` preserves the source Oracle 11g DDL, DML, PL/SQL and queries
 > **verbatim** for grading. Nothing in that file is executed by the application; it is the
-> specification the Postgres implementation was translated from.
+> specification the Postgres implementation was translated from. The MongoDB migration is tracked
+> separately and does not change those artefacts.
 
 ---
 
@@ -18,8 +19,8 @@ seven use cases from the use-case diagram.
 
 | Layer     | Technology                                                    |
 | --------- | ------------------------------------------------------------- |
-| Database  | PostgreSQL 16 (Docker)                                        |
-| ORM       | Prisma 6 — schema in `prisma/schema.prisma`                   |
+| Database  | MongoDB (migration in progress; PostgreSQL/Prisma is current) |
+| ODM       | Mongoose (planned replacement for Prisma)                      |
 | Backend   | Node.js + Express 4 + TypeScript                              |
 | Auth      | JWT access + refresh tokens, bcrypt password hashing          |
 | Frontend  | React 18 + TypeScript + Vite 6 + Tailwind CSS 4 + React Router |
@@ -32,12 +33,12 @@ seven use cases from the use-case diagram.
 
 ```
 ForenSys/
-├── docker-compose.yml            # PostgreSQL 16 service
-├── .env / .env.example           # DATABASE_URL, JWT secrets, upload config
+├── docker-compose.yml            # PostgreSQL 16 service (legacy; MongoDB migration planned)
+├── .env / .env.example           # DATABASE_URL / MONGODB_URI, JWT secrets, upload config
 ├── docs/
 │   └── oracle-11g-reference.sql  # ORIGINAL Oracle 11g source (verbatim, for grading)
 ├── prisma/
-│   ├── schema.prisma             # Translated schema (snake_case via @map)
+│   ├── schema.prisma             # Current PostgreSQL schema (being replaced by Mongoose models)
 │   ├── migrations/               # init migration: tables + CHECKs + triggers + functions
 │   └── seed.ts                   # sample dataset + bcrypt hashes
 ├── scripts/
@@ -129,18 +130,18 @@ to match the diagram exactly.
 
 1. **Authenticate User** — badge number + password login, bcrypt verification, JWT access token
    (15 min) and refresh token (7 days), silent refresh on `401`, logout, session restore.
-2. **Create Crime Report** — registers a `CASES` row; `lead_officer_id` is auto-assigned to the
+2. **Create Crime Report** — registers a case document; the lead officer is auto-assigned to the
    signed-in officer (overridable), status defaults to `open`.
 3. **Register Evidence Item** — form branches on `evidence_type`: `Digital Device` writes a
-   `DIGITAL_EVIDENCE` row, every other category writes a `PHYSICAL_EVIDENCE` row. Both branches
-   are validated server-side and written in one transaction.
-4. **Log Chain of Custody** — creates a `CUSTODY_LOG` row; the **current holder** is computed as
+   digital-evidence document, every other category writes a physical-evidence document. Both
+   branches are validated server-side and written together.
+4. **Log Chain of Custody** — creates a custody-log document; the **current holder** is computed as
    the receiver of the most recent transfer and displayed before submitting. Transfers are
    rejected if the releasing officer is not the current holder, or if releaser = receiver.
 5. **Upload Laboratory & Witness Reports** — multipart upload stored on disk with metadata in a
-   new `REPORTS` table (attached to a case, an evidence item, or both). Lab Analyst only.
+   report document (attached to a case, an evidence item, or both). Lab Analyst only.
 6. **View Case Timeline** — per-case chronological feed merging case registration, evidence
-   collection, custody transfers and status changes read from `CASE_AUDIT_LOG`.
+   collection, custody transfers and status changes.
 7. **View Analytics Dashboard** — Admin-only: cases by status, evidence by type, digital file size
    (avg/max/min/sum) by media type, officer workload, custody activity, and the `ROLLUP` cross-tab.
 
@@ -201,6 +202,9 @@ the Postgres login role.
 > were created. Here the trigger is part of the migration and always present, so the seed loads that
 > case as `open`, collects `EV-807`, then closes it through `sp_change_case_status()`. The rule is
 > honoured and the closure appears in `CASE_AUDIT_LOG` as a genuine audited transition.
+> 
+> **Migration note.** These business rules currently live in PostgreSQL triggers and functions. Under
+> MongoDB they are intended to be enforced in application code, mirroring the same behaviour.
 
 ---
 
@@ -293,7 +297,8 @@ docker exec forensys-db psql -U forensys -d forensys -c \
 
 | Variable                 | Default                                                          | Purpose                          |
 | ------------------------ | ---------------------------------------------------------------- | -------------------------------- |
-| `DATABASE_URL`           | `postgresql://forensys:forensys@localhost:5432/forensys?schema=public` | Prisma connection string    |
+| `DATABASE_URL`           | `postgresql://forensys:forensys@localhost:5432/forensys?schema=public` | Current Prisma/PostgreSQL connection string    |
+| `MONGODB_URI`            | —                                                                | Future MongoDB connection string (migration target) |
 | `JWT_SECRET`             | —                                                                | Access-token signing key         |
 | `JWT_EXPIRES_IN`         | `15m`                                                            | Access-token lifetime            |
 | `JWT_REFRESH_SECRET`     | —                                                                | Refresh-token signing key        |
@@ -310,9 +315,10 @@ docker exec forensys-db psql -U forensys -d forensys -c \
 - **bcrypt via `bcryptjs`** (pure JS) rather than the native `bcrypt` binding, which needs a
   compiler toolchain on Windows. The output is a standard bcrypt hash (`$2a$10$…`, 60 chars) and is
   fully compatible with `bcrypt`.
-- **UUIDs are app-generated** (`crypto`/Prisma `@default(uuid())`) for every `*_id`, matching the
-  report's `VARCHAR2(36)` columns. Seeded rows keep the report's human-readable ids (`OFF-101`,
-  `CASE-2024-01`, `EV-801`, `LOG-5001`) so the dataset stays comparable to the coursework.
+- **UUIDs are app-generated** (`crypto`/Prisma `@default(uuid())`) for every `*_id` in the current
+  PostgreSQL schema. Seeded rows keep the report's human-readable ids (`OFF-101`,
+  `CASE-2024-01`, `EV-801`, `LOG-5001`) so the dataset stays comparable to the coursework. The same
+  identifiers are intended to be preserved during the MongoDB migration.
 - **`CASE_AUDIT_LOG` has no foreign key to `CASES`** — deliberately, matching the Oracle schema, so
   the audit trail outlives a cascading case deletion. This is why it is not modelled as a Prisma
   relation.
@@ -320,3 +326,5 @@ docker exec forensys-db psql -U forensys -d forensys -c \
   exists so the UI has one thing to call and a refresh-token denylist has a home later.
 - **Demo credentials are listed on the login screen** for coursework convenience. A real deployment
   would not do this.
+- **Repository description helper.** `.github_repo_description_update.sh` is a local convenience
+  script for updating the GitHub repo description; it is not executed by the application.
