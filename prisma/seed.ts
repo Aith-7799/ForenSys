@@ -14,9 +14,7 @@
  */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import { PrismaClient, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma.js';
 
 /** Every seeded account shares this password. Documented in the README. */
 const DEMO_PASSWORD = 'Forensys@123';
@@ -104,14 +102,14 @@ const PHYSICAL_EVIDENCE = [
 ];
 
 const DIGITAL_EVIDENCE = [
-  { evidenceId: 'EV-801', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1500.50'), deviceSerial: 'SN-SERVER-9921' },
-  { evidenceId: 'EV-805', fileHashSha256: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4', mediaType: 'Database Dump (.sql)', sizeMb: new Prisma.Decimal('450.75'), deviceSerial: 'SN-LAPTOP-4410' },
+  { evidenceId: 'EV-801', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: 1500.50, deviceSerial: 'SN-SERVER-9921' },
+  { evidenceId: 'EV-805', fileHashSha256: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4', mediaType: 'Database Dump (.sql)', sizeMb: 450.75, deviceSerial: 'SN-LAPTOP-4410' },
   // SN-SERVER-9921 deliberately REUSES the serial of EV-801 (CASE-2024-01):
   // stolen server redeployed into the CASE-2024-06 breach -> 40% digital vector.
-  { evidenceId: 'EV-808', fileHashSha256: '6d2f4b8e1a3c5d7f09ab8c2e4f6a1b3d5c7e9f0a2b4d6c8e0a2b4d6f8c1e3a5b', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1320.00'), deviceSerial: 'SN-SERVER-9921' },
-  { evidenceId: 'EV-809', fileHashSha256: '1b4c9e2a7d3f6b8c0a5e1d9f3c7b2a6e4d8f0c3b7a1e5d9c3f7b2a6e0d4c8f1a', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('980.25'), deviceSerial: 'SN-TOWER-7734' },
+  { evidenceId: 'EV-808', fileHashSha256: '6d2f4b8e1a3c5d7f09ab8c2e4f6a1b3d5c7e9f0a2b4d6c8e0a2b4d6f8c1e3a5b', mediaType: 'Disk Image (.raw)', sizeMb: 1320.00, deviceSerial: 'SN-SERVER-9921' },
+  { evidenceId: 'EV-809', fileHashSha256: '1b4c9e2a7d3f6b8c0a5e1d9f3c7b2a6e4d8f0c3b7a1e5d9c3f7b2a6e0d4c8f1a', mediaType: 'Disk Image (.raw)', sizeMb: 980.25, deviceSerial: 'SN-TOWER-7734' },
   // The EXACT hash of EV-801 appears again in Seattle: the same image was re-uploaded.
-  { evidenceId: 'EV-812', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: new Prisma.Decimal('1500.50'), deviceSerial: 'SN-RACK-2210' },
+  { evidenceId: 'EV-812', fileHashSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', mediaType: 'Disk Image (.raw)', sizeMb: 1500.50, deviceSerial: 'SN-RACK-2210' },
 ];
 
 const CUSTODY_LOG = [
@@ -142,6 +140,7 @@ async function wipe() {
 }
 
 async function main() {
+  await prisma.$connect();
   console.log('ForenSys seed -- wiping existing rows');
   await wipe();
 

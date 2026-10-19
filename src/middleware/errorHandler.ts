@@ -86,7 +86,18 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
 
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  // MongoDB / Mongoose duplicate key error (code 11000)
+  if ((err as any)?.code === 11000) {
+    const key = Object.keys((err as any).keyPattern || {})[0] || 'field';
+    res.status(409).json({
+      error: 'conflict',
+      message: `A record with that ${key} already exists.`,
+    });
+    return;
+  }
+
+  // Safe Prisma check
+  if (Prisma?.PrismaClientKnownRequestError && err instanceof Prisma.PrismaClientKnownRequestError) {
     const mapped = fromPrisma(err);
     if (mapped) {
       const { status, ...body } = mapped;

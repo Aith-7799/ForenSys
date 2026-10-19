@@ -20,7 +20,11 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: num('PORT', 4000),
 
-  databaseUrl: str('DATABASE_URL'),
+  databaseUrl: process.env.DATABASE_URL ?? '',
+  mongoUri: str(
+    'MONGODB_URI',
+    'mongodb+srv://vanimishra0707_db_user:MgMlLxfKVOHiQ82P@cluster0.mhr1j39.mongodb.net/forensys?retryWrites=true&w=majority'
+  ),
 
   jwtSecret: str('JWT_SECRET'),
   jwtExpiresIn: str('JWT_EXPIRES_IN', '15m'),
