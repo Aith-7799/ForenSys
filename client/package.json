@@ -4,9 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "description": "ForenSys frontend",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "e2e": "node e2e/use-cases.e2e.mjs"
