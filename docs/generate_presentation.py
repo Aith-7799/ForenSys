@@ -661,14 +661,14 @@ def create_deck():
     add_header(s16, "Empirical System Verification Screenshots")
     
     # Place two screenshot boxes side by side
-    img1 = os.path.join(SCREENSHOTS_DIR, "media_1789148621879.png")
-    img2 = os.path.join(SCREENSHOTS_DIR, "media_1792400285638_c39904d6.jpg")
+    img1 = os.path.join(SCREENSHOTS_DIR, "oracle_tables_verification.png")
+    img2 = os.path.join(SCREENSHOTS_DIR, "ui_intelligence_graph.png")
     
     if os.path.exists(img1):
         s16.shapes.add_picture(img1, Inches(0.8), Inches(1.8), Inches(5.6), Inches(4.5))
         tb_c1 = s16.shapes.add_textbox(Inches(0.8), Inches(6.4), Inches(5.6), Inches(0.6))
         p = tb_c1.text_frame.paragraphs[0]
-        p.text = "Figure 1: Oracle 11g SQL*Plus Execution — Schema DDL & Integrity Triggers"
+        p.text = "Figure 1: Oracle 11g SQL*Plus Execution — Schema Table Catalog & Row Verification"
         p.font.name = 'Calibri'
         p.font.size = Pt(10)
         p.font.italic = True
@@ -679,7 +679,7 @@ def create_deck():
         s16.shapes.add_picture(img2, Inches(6.8), Inches(1.8), Inches(5.6), Inches(4.5))
         tb_c2 = s16.shapes.add_textbox(Inches(6.8), Inches(6.4), Inches(5.6), Inches(0.6))
         p = tb_c2.text_frame.paragraphs[0]
-        p.text = "Figure 2: Live FORENSYS Web Client — Analytics Dashboard & Case Management"
+        p.text = "Figure 2: Live FORENSYS Web Client — Cross-Case Linkage & Intelligence Graph"
         p.font.name = 'Calibri'
         p.font.size = Pt(10)
         p.font.italic = True
