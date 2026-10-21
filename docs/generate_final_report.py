@@ -532,7 +532,7 @@ def generate_report():
     add_bullet(doc, "Serves as the rigid relational source of truth. Enforces ACID transactional guarantees, foreign key cascades, complex analytical GROUP BY ROLLUP aggregations, stored procedures, and row-level triggers.", "Oracle Database 11g: ")
     add_bullet(doc, "Serves as the elastic cloud persistence tier. Manages high-volume forensic laboratory reports, PDF/DOCX attachments, unstructured witness statements, geospatial point indexes, and real-time cross-case similarity cache documents.", "MongoDB Atlas Cloud Cluster: ")
 
-    add_image_figure(doc, "media_1792400165706_575a231d.png", "Figure 2.1: Live MongoDB Atlas Production Cloud Cluster Architecture (forensys database)")
+    add_image_figure(doc, "atlas_cloud_collections.png", "Figure 2.1: Live MongoDB Atlas Production Cloud Console (Data Explorer) showing Cluster0 and forensys Collections")
 
     add_heading_2(doc, "2.4 Cross-Case Intelligence & Vector Similarity Modeling")
     add_paragraph(doc,
@@ -571,16 +571,18 @@ def generate_report():
         "logical modeling, and normalization to physical schema realization in Oracle 11g and MongoDB Atlas."
     )
 
-    add_heading_2(doc, "3.2 Conceptual Design: Enhanced Entity-Relationship (EER) Modeling")
+    add_heading_2(doc, "3.2 Conceptual Design: Entity-Relationship (ER) & Enhanced ER (EER) Modeling")
     add_paragraph(doc,
-        "The conceptual domain is modeled via an Enhanced Entity-Relationship (EER) diagram. The core entities and their cardinalities are structured as follows:"
+        "The conceptual domain is modeled via comprehensive Entity-Relationship (ER) and Enhanced Entity-Relationship (EER) diagrams. Figure 3.1 illustrates the structural entities, attributes, primary keys, foreign keys, and cardinalities. Figure 3.2 details the Enhanced ER specialization (ISA hierarchy) modeling distinct officer personas and custodial interactions:"
     )
-    add_bullet(doc, "One-to-Many (1:N) relationship. An officer may lead zero, one, or many cases. Every case must have exactly one designated lead officer.", "OFFICERS to CASES (LeadOfficer): ")
-    add_bullet(doc, "One-to-Many (1:N) relationship with ON DELETE CASCADE. A case contains zero, one, or many evidence items. Each evidence item belongs to exactly one case.", "CASES to EVIDENCE: ")
+    add_image_figure(doc, "er_diagram.png", "Figure 3.1: Entity-Relationship (ER) Diagram of FORENSYS Database")
+    add_bullet(doc, "One-to-Many (1:N) relationship. An officer may lead zero, one, or many cases. Every case must have exactly one designated lead officer.", "OFFICERS to CASES (Manages / Leads): ")
+    add_bullet(doc, "One-to-Many (1:N) relationship with ON DELETE CASCADE. A case contains zero, one, or many evidence items. Each evidence item belongs to exactly one case.", "CASES to EVIDENCE (Contains): ")
     add_bullet(doc, "Disjoint specialization (ISA hierarchy). An evidence item is either physical evidence or digital evidence, but never both simultaneously.", "EVIDENCE Subtypes (PHYSICAL / DIGITAL): ")
-    add_bullet(doc, "One-to-Many (1:N) relationship. An evidence item has an ordered sequence of custody logs detailing its historical chain of transfers.", "EVIDENCE to CUSTODY_LOG: ")
-    add_bullet(doc, "Two distinct Many-to-One relationships (ReleasedBy and ReceivedBy) referencing the OFFICERS table, tracking the handoff pair.", "CUSTODY_LOG to OFFICERS: ")
+    add_bullet(doc, "One-to-Many (1:N) relationship. An evidence item has an ordered sequence of custody logs detailing its historical chain of transfers.", "EVIDENCE to CUSTODY_LOG (Generates / Tracks): ")
+    add_bullet(doc, "Two distinct Many-to-One relationships (Releases and Receives) referencing the OFFICERS table, tracking the handoff pair.", "CUSTODY_LOG to OFFICERS: ")
     add_bullet(doc, "Independent audit trail. Records status changes triggered on the CASES table, intentionally avoiding a foreign key constraint to preserve audit history even if a case is purged.", "CASE_AUDIT_LOG: ")
+    add_image_figure(doc, "eer_diagram.png", "Figure 3.2: Enhanced Entity-Relationship (EER) Diagram with Role Specialization (ISA Hierarchy)")
 
     add_heading_2(doc, "3.3 Relational Schema Decomposition & Data Dictionary")
     add_paragraph(doc, "The FORENSYS relational catalog comprises seven core relational tables in Oracle 11g:")
@@ -719,8 +721,7 @@ CREATE TABLE CASE_AUDIT_LOG (
 CREATE SEQUENCE seq_audit_id START WITH 1 INCREMENT BY 1 NOCACHE;"""
     add_code_block(doc, oracle_ddl_sample)
 
-    add_image_figure(doc, "media_1789148621879.png", "Figure 3.1: Oracle 11g SQL*Plus Execution — Table Creation & Integrity Constraints")
-    add_image_figure(doc, "media_1789148631219.png", "Figure 3.2: Oracle 11g SQL*Plus Execution — Subtype Tables (PHYSICAL, DIGITAL) & CUSTODY_LOG")
+    add_image_figure(doc, "oracle_tables_verification.png", "Figure 3.3: Oracle 11g SQL*Plus Execution — Schema Table Catalog and Multi-Table Row Verification")
 
     add_heading_2(doc, "3.6 Advanced SQL Analytics & Aggregations")
     add_paragraph(doc, "To provide investigative intelligence, FORENSYS implements multi-table relational joins and analytical aggregations:")
@@ -746,8 +747,7 @@ FROM digital_evidence de
 GROUP BY de.media_type
 ORDER BY total_storage_mb DESC;""")
 
-    add_image_figure(doc, "media_1789148647788.png", "Figure 3.3: Oracle 11g SQL*Plus Execution — Multi-Table Join & Custody Query Verification")
-    add_image_figure(doc, "media_1789148654026.png", "Figure 3.4: Oracle 11g SQL*Plus Execution — GROUP BY ROLLUP and Aggregate Statistics")
+    add_image_figure(doc, "oracle_rollup_analytics.png", "Figure 3.4: Oracle 11g SQL*Plus Execution — Hierarchical GROUP BY ROLLUP Analytics")
 
     add_heading_2(doc, "3.7 PL/SQL Programmability: Procedures, Functions & Triggers")
     add_paragraph(doc, "FORENSYS implements comprehensive PL/SQL modules encapsulating business logic inside the database engine:")
@@ -834,7 +834,7 @@ BEGIN
 END;
 /""")
 
-    add_image_figure(doc, "media_1789148640625.png", "Figure 3.5: Oracle 11g SQL*Plus Execution — PL/SQL Triggers and Procedures Compilation & Test Runs")
+    add_image_figure(doc, "oracle_trigger_test.png", "Figure 3.5: Oracle 11g SQL*Plus Execution — Active Trigger TRG_PREVENT_CLOSED_CASE_EVID Spoliation Prevention Test")
 
     add_heading_2(doc, "3.8 Cloud NoSQL MongoDB Atlas Architecture")
     add_paragraph(doc,
@@ -843,6 +843,8 @@ END;
         "mongodb+srv://vanimishra0707_db_user:********@cluster0.mhr1j39.mongodb.net/forensys\n\n"
         "MongoDB collections mirror and extend relational models through rich Mongoose schemas, indexes, and virtual population references."
     )
+    add_image_figure(doc, "nosql_demo_terminal_1.png", "Figure 3.6: NoSQL Execution Trace — Live Cloud Handshake, Active Collections & Embedded BSON Subdocument")
+    add_image_figure(doc, "nosql_demo_terminal_2.png", "Figure 3.7: MongoDB Aggregation Pipeline Execution ($lookup + $group + $project) & Duplicate Alert Document")
 
     doc.add_page_break()
 
@@ -881,19 +883,26 @@ END;
     tbl_rbac = doc.add_table(rows=1, cols=5)
     style_table(tbl_rbac, [1.8, 1.2, 1.2, 1.2, 1.1], rbac_headers, rbac_data)
 
-    add_heading_2(doc, "4.3 Digital Artifact SHA-256 Hashing & Duplicate Ingestion Traps")
-    add_paragraph(doc,
-        "When an investigator registers digital evidence, the backend validates that size_mb is strictly positive and that the file_hash_sha256 "
-        "matches the 64-character hexadecimal regex ^[a-fA-F0-9]{64}$. Upon insertion, the system executes an automated duplicate detection routine: "
-        "if the same file hash is detected in another active case, the system flags a DuplicateEvidenceAlert, preventing evidence duplication while alerting detectives to cross-case correlations."
-    )
+    add_image_figure(doc, "ui_login.png", "Figure 4.1: FORENSYS Authentication Portal with Role-Based Persona Sign-In")
 
-    add_heading_2(doc, "4.4 Multi-Vector Case Similarity & Graph Network Visualization")
+    add_heading_2(doc, "4.3 Crime Report Registration & Case Management")
     add_paragraph(doc,
-        "The intelligence engine exposes GET /api/cases/correlation-graph to project all active investigations onto an interactive topological network graph. "
-        "Nodes represent cases (colored by status and sized by evidence count), and weighted edges represent multi-vector similarity scores above the threshold. "
-        "Detectives can immediately identify crime rings operating across municipal borders."
+        "Investigating officers can register new crime reports with title, incident date/time, and geospatial coordinate points. The lead officer is automatically assigned to the logged-in officer per business rules, or can be reassigned to other authorized detectives. Once created, cases are listed on the main dashboard with filterable investigation statuses:"
     )
+    add_image_figure(doc, "ui_create_case.png", "Figure 4.2: Create Crime Report Interface with Automated Lead Officer Assignment")
+    add_image_figure(doc, "ui_cases_dashboard.png", "Figure 4.3: Cases Management Console with Investigation Status Badges & Quick Action Controls")
+
+    add_heading_2(doc, "4.4 Digital Artifact SHA-256 Hashing & Custodial Chain of Custody")
+    add_paragraph(doc,
+        "When an investigator registers digital evidence, the backend validates that size_mb is strictly positive and that the file_hash_sha256 matches the 64-character hexadecimal regex. During custodial handoffs, the system dynamically checks the most recent CUSTODY_LOG entry to verify that the releasing officer is indeed the current holder, rejecting unauthorized transfers with clear validation alerts:"
+    )
+    add_image_figure(doc, "ui_chain_of_custody.png", "Figure 4.4: Log Chain of Custody Interface with Active Custodial Holder Validation & Transfer History")
+
+    add_heading_2(doc, "4.5 Multi-Vector Case Similarity & Graph Network Visualization")
+    add_paragraph(doc,
+        "The intelligence engine exposes GET /api/cases/correlation-graph to project all active investigations onto an interactive topological network graph. Nodes represent cases (colored by status and sized by evidence count), and weighted edges represent multi-vector similarity scores above the threshold. Detectives can immediately identify crime rings operating across municipal borders:"
+    )
+    add_image_figure(doc, "ui_intelligence_graph.png", "Figure 4.5: Cross-Case Linkage & Intelligence Graph with Force-Directed Correlation Topology")
 
     add_heading_2(doc, "4.5 Forensic Laboratory Report Ingestion & Cloud Document Linking")
     add_paragraph(doc,
@@ -914,7 +923,6 @@ END;
         "officer workload distribution, and the hierarchical GROUP BY ROLLUP summary."
     )
 
-    add_image_figure(doc, "media_1792400285638_c39904d6.jpg", "Figure 4.1: FORENSYS Interactive Web Client — Live Dashboard & Evidence Management Console")
 
     doc.add_page_break()
 
