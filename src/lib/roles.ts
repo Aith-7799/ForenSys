@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Roles and the permission matrix, derived from the ForenSys use-case diagram.
  *
  * The four role strings are exactly the values allowed by the Oracle
@@ -40,7 +40,7 @@ export const PERMISSIONS = {
   /** Log Chain of Custody */
   LOG_CUSTODY: [ROLES.INVESTIGATING_OFFICER, ROLES.LAB_ANALYST],
   /** Upload Laboratory and Witness Reports */
-  UPLOAD_REPORT: [ROLES.LAB_ANALYST],
+  UPLOAD_REPORT: [ROLES.LAB_ANALYST, ROLES.INVESTIGATING_OFFICER],
   /** View Case Timeline (read access to cases / evidence / custody) */
   VIEW_CASE_DATA: [
     ROLES.INVESTIGATING_OFFICER,

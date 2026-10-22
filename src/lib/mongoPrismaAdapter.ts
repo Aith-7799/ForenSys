@@ -43,7 +43,8 @@ class MongoPrismaAdapter {
       const caseId = values[0];
       const newStatus = values[1];
       const actor = values[2];
-      await this.changeCaseStatus(caseId, newStatus, actor);
+      const customTimestamp = values[3];
+      await this.changeCaseStatus(caseId, newStatus, actor, customTimestamp);
       return [{ outcome: 'status_changed' }];
     }
 
@@ -248,6 +249,12 @@ class MongoPrismaAdapter {
 
   async $executeRawUnsafe(query: string, ...values: any[]): Promise<any> {
     if (query.includes('sp_change_case_status')) {
+      const matchesWithTs = query.match(/sp_change_case_status\('([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/);
+      if (matchesWithTs) {
+        const [, caseId, newStatus, actor, tsStr] = matchesWithTs;
+        await this.changeCaseStatus(caseId, newStatus, actor, new Date(tsStr));
+        return 1;
+      }
       const matches = query.match(/sp_change_case_status\('([^']+)',\s*'([^']+)',\s*'([^']+)'\)/);
       if (matches) {
         const [, caseId, newStatus, actor] = matches;
@@ -268,7 +275,7 @@ class MongoPrismaAdapter {
     return 1;
   }
 
-  private async changeCaseStatus(caseId: string, newStatus: string, actor: string) {
+  private async changeCaseStatus(caseId: string, newStatus: string, actor: string, changeTimestamp?: Date) {
     const existing = await Case.findOne({ caseId });
     if (!existing) return;
     const oldStatus = existing.status;
@@ -284,7 +291,7 @@ class MongoPrismaAdapter {
         oldStatus,
         newStatus,
         changedBy: actor,
-        changeTimestamp: new Date(),
+        changeTimestamp: changeTimestamp ?? new Date(),
       });
     }
   }

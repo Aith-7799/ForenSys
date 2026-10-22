@@ -1,4 +1,4 @@
-import { api } from '../lib/api';
+﻿import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { STATUS_LABELS } from '../lib/permissions';
 import type { DashboardSummary, RollupRow } from '../lib/types';
@@ -14,7 +14,7 @@ export function DashboardPage() {
   const summary = useAsync(() => api.get<DashboardSummary>('/api/dashboard/summary'), []);
   const rollup = useAsync(() => api.get<{ rollup: RollupRow[] }>('/api/dashboard/rollup'), []);
 
-  if (summary.loading) return <Spinner label="Loading analytics…" />;
+  if (summary.loading) return <Spinner label="Loading analyticsâ€¦" />;
 
   return (
     <>
@@ -40,7 +40,7 @@ export function DashboardPage() {
             <section className="fs-table-card">
               <h2 className="font-semibold text-white">Cases by status</h2>
               <p className="mb-4 text-xs text-slate-400">
-                <code>GROUP BY c.status</code> with a LEFT JOIN to evidence
+                Cases categorized by current judicial and investigative lifecycle status
               </p>
 
               {summary.data.caseCountsByStatus.length === 0 ? (
@@ -61,7 +61,7 @@ export function DashboardPage() {
             <section className="fs-table-card">
               <h2 className="font-semibold text-white">Evidence by type</h2>
               <p className="mb-4 text-xs text-slate-400">
-                <code>GROUP BY e.evidence_type</code>
+                Distribution of physical, biological, and digital evidence categories
               </p>
 
               {summary.data.evidenceCountsByType.length === 0 ? (
@@ -82,7 +82,7 @@ export function DashboardPage() {
             <section className="fs-table-card lg:col-span-2">
               <h2 className="font-semibold text-white">Digital evidence size by media type</h2>
               <p className="mb-4 text-xs text-slate-400">
-                <code>GROUP BY media_type</code> with AVG / MAX / MIN / SUM over{' '}
+                Storage and size metrics across seized digital storage media with AVG / MAX / MIN / SUM over{' '}
                 <code>digital_evidence.size_mb</code>
               </p>
 
@@ -118,7 +118,7 @@ export function DashboardPage() {
               )}
             </section>
 
-            {/* Officer workload — Oracle FN_GET_OFFICER_WORKLOAD */}
+            {/* Officer workload â€” Oracle FN_GET_OFFICER_WORKLOAD */}
             <section className="fs-table-card">
               <h2 className="font-semibold text-white">Officer workload</h2>
               <p className="mb-4 text-xs text-slate-400">
@@ -156,13 +156,13 @@ export function DashboardPage() {
 
             {/* GROUP BY ROLLUP */}
             <section className="fs-table-card">
-              <h2 className="font-semibold text-white">Status × type rollup</h2>
+              <h2 className="font-semibold text-white">Status Ã— type rollup</h2>
               <p className="mb-4 text-xs text-slate-400">
-                <code>GROUP BY ROLLUP(c.status, e.evidence_type)</code>
+                Multi-dimensional cross-tabulation of evidence categories across case statuses
               </p>
 
               {rollup.loading ? (
-                <Spinner label="Running rollup…" />
+                <Spinner label="Running rollupâ€¦" />
               ) : (rollup.data?.rollup.length ?? 0) === 0 ? (
                 <EmptyState title="Not enough data for a rollup." />
               ) : (
@@ -202,7 +202,7 @@ export function DashboardPage() {
             <section className="fs-table-card lg:col-span-2">
               <h2 className="font-semibold text-white">Chain-of-custody activity</h2>
               <p className="mb-4 text-xs text-slate-400">
-                Transfers per evidence item — the equivalent of Oracle{' '}
+                Transfers per evidence item â€” the equivalent of Oracle{' '}
                 <code>FN_COUNT_CUSTODY_TRANSFERS</code>
               </p>
 

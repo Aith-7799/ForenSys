@@ -372,25 +372,26 @@ async function main() {
 
   // CLOSE / ARCHIVE CASES via trigger (creates CASE_AUDIT_LOG rows)
   console.log('\nClosing / archiving cases via sp_change_case_status (triggers audit log)...');
-  const closureActors: Record<string, string> = {
-    'CASE-001': 'High Court of Chhattisgarh',
-    'CASE-002': 'High Court of Kerala',
-    'CASE-003': 'High Court of J&K and Ladakh',
-    'CASE-004': 'High Court of Gujarat',
-    'CASE-008': 'Bombay High Court, Kolhapur',
-    'CASE-009': 'High Court of Judicature at Bombay',
-    'CASE-010': 'High Court of Gujarat',
-    'CASE-011': 'High Court of Gujarat',
-    'CASE-014': 'High Court of Judicature at Bombay',
-    'CASE-015': 'Sessions Court, Greater Mumbai',
-    'CASE-016': 'High Court of Judicature at Bombay',
+  const closureDetails: Record<string, { status: string; actor: string; timestamp: Date }> = {
+    'CASE-001': { status: 'closed',   actor: 'High Court of Chhattisgarh',      timestamp: ts(2023, 7, 18, 14, 30) },
+    'CASE-002': { status: 'closed',   actor: 'High Court of Kerala',             timestamp: ts(2020, 6, 15, 11, 0)  },
+    'CASE-003': { status: 'archived', actor: 'High Court of J&K and Ladakh',    timestamp: ts(2026, 10, 21, 10, 30) },
+    'CASE-004': { status: 'archived', actor: 'High Court of Gujarat',            timestamp: ts(2026, 10, 21, 11, 15) },
+    'CASE-008': { status: 'archived', actor: 'Bombay High Court, Kolhapur',     timestamp: ts(2026, 10, 21, 12, 0)  },
+    'CASE-009': { status: 'archived', actor: 'High Court of Judicature at Bombay', timestamp: ts(2026, 10, 21, 12, 15) },
+    'CASE-010': { status: 'archived', actor: 'High Court of Gujarat',            timestamp: ts(2026, 10, 21, 12, 30) },
+    'CASE-011': { status: 'archived', actor: 'High Court of Gujarat',            timestamp: ts(2026, 10, 21, 12, 45) },
+    'CASE-014': { status: 'archived', actor: 'High Court of Judicature at Bombay', timestamp: ts(2026, 10, 21, 13, 15) },
+    'CASE-015': { status: 'archived', actor: 'Sessions Court, Greater Mumbai',   timestamp: ts(2026, 8, 14, 15, 0)   },
+    'CASE-016': { status: 'archived', actor: 'High Court of Judicature at Bombay', timestamp: ts(2026, 10, 21, 13, 30) },
   };
-  for (const [caseId, finalStatus] of Object.entries(CLOSE_AFTER_SEED)) {
-    const actor = closureActors[caseId] ?? 'Judicial Authority';
+
+  for (const [caseId, detail] of Object.entries(closureDetails)) {
+    const isoTimestamp = detail.timestamp.toISOString();
     await prisma.$executeRawUnsafe(
-      `SELECT sp_change_case_status('${caseId}', '${finalStatus}', '${actor}')`,
+      `SELECT sp_change_case_status('${caseId}', '${detail.status}', '${detail.actor}', '${isoTimestamp}')`,
     );
-    console.log(`  ✓ ${caseId} → ${finalStatus} (by ${actor})`);
+    console.log(`  ✓ ${caseId} → ${detail.status} (by ${detail.actor} at ${detail.timestamp.toISOString()})`);
   }
 
   // Final row counts

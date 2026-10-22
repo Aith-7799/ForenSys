@@ -1,4 +1,4 @@
-import type { Role } from './types';
+﻿import type { Role } from './types';
 
 /**
  * Mirror of the server's permission matrix (server/src/lib/roles.ts), which is
@@ -13,7 +13,7 @@ export const PERMISSIONS = {
   CREATE_CASE: ['Investigating Officer'],
   REGISTER_EVIDENCE: ['Investigating Officer'],
   LOG_CUSTODY: ['Investigating Officer', 'Lab Analyst'],
-  UPLOAD_REPORT: ['Lab Analyst'],
+  UPLOAD_REPORT: ['Lab Analyst', 'Investigating Officer'],
   VIEW_CASE_DATA: [
     'Investigating Officer',
     'Lab Analyst',
