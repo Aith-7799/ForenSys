@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+﻿import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner, Spinner } from '../components/ui';
@@ -36,7 +36,7 @@ export function LoginPage() {
   const [error, setError] = useState<unknown>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) return <Spinner label="Restoring session…" />;
+  if (loading) return <Spinner label="Restoring sessionâ€¦" />;
   if (officer) {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={from ?? '/cases'} replace />;
@@ -85,16 +85,16 @@ export function LoginPage() {
 
           <ul className="mt-8 space-y-3 text-sm text-slate-300">
             <li className="flex gap-2">
-              <span className="text-amber-400">◆</span> Register evidence with physical &amp; digital subtypes
+              <span className="text-amber-400">â—†</span> Register evidence with physical &amp; digital subtypes
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">◆</span> Tamper-evident chain-of-custody trail
+              <span className="text-amber-400">â—†</span> Tamper-evident chain-of-custody trail
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">◆</span> Database-enforced auditing on status changes
+              <span className="text-amber-400">â—†</span> Database-enforced auditing on status changes
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">◆</span> Role-based access for officers, analysts &amp; admins
+              <span className="text-amber-400">â—†</span> Role-based access for officers, analysts &amp; admins
             </li>
           </ul>
         </div>
@@ -115,7 +115,7 @@ export function LoginPage() {
                 id="badgeNumber"
                 className="fs-input"
                 autoComplete="username"
-                placeholder="BADGE-9081"
+                placeholder="IO-001"
                 value={badgeNumber}
                 onChange={(e) => setBadgeNumber(e.target.value)}
                 required
@@ -138,13 +138,13 @@ export function LoginPage() {
             </div>
 
             <button type="submit" className="fs-btn-primary w-full" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
+              {submitting ? 'Signing inâ€¦' : 'Sign in'}
             </button>
           </form>
 
           <div className="mt-8">
             <p className="text-xs font-medium tracking-wide text-slate-400 uppercase">
-              Demo accounts
+              Authorized Officer Accounts
             </p>
             <p className="mt-1 text-xs text-slate-400">
               Password for all accounts: <code className="font-mono">{DEMO_PASSWORD}</code>
