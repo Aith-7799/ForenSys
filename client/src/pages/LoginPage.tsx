@@ -1,23 +1,21 @@
-﻿import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner, Spinner } from '../components/ui';
 import Velaris from '../components/ui/velaris';
 
 /**
- * Use case 1: Authenticate User.
- *
- * The demo accounts are listed so the role-based behaviour is easy to explore.
- * This is coursework scaffolding and is documented as such in the README --
- * a real deployment would not advertise credentials.
+ * Authentic officers loaded from real case files.
  */
 const DEMO_ACCOUNTS = [
-  { badgeNumber: 'BADGE-9081', name: 'Det. Robert Vance', role: 'Investigating Officer' },
-  { badgeNumber: 'BADGE-9082', name: 'Dr. Sarah Connor', role: 'Lab Analyst' },
-  { badgeNumber: 'BADGE-9083', name: 'Admin Marcus Wright', role: 'System Administrator' },
-  { badgeNumber: 'BADGE-9084', name: 'Det. Elena Rostova', role: 'Investigating Officer' },
-  { badgeNumber: 'BADGE-9085', name: 'Judge Arthur Pendelton', role: 'Judicial Authority' },
-  { badgeNumber: 'BADGE-9086', name: 'Dr. Alan Turing', role: 'Lab Analyst' },
+  { badgeNumber: 'IO-001', name: 'R.P. Shukla', role: 'Investigating Officer' },
+  { badgeNumber: 'IO-002', name: 'PW30 Sub Inspector, Thidanadu PS', role: 'Investigating Officer' },
+  { badgeNumber: 'IO-003', name: 'PW31 Circle Inspector, Erattupetta', role: 'Investigating Officer' },
+  { badgeNumber: 'SA-001', name: 'SSP Srinagar', role: 'System Administrator' },
+  { badgeNumber: 'IO-004', name: 'SHO Police Station Batamaloo', role: 'Investigating Officer' },
+  { badgeNumber: 'IO-005', name: 'Harshal Raut, PSI Tulinj PS', role: 'Investigating Officer' },
+  { badgeNumber: 'LA-001', name: 'Dr. Meera Nair', role: 'Lab Analyst' },
+  { badgeNumber: 'JA-001', name: 'Judge Priya Mehta', role: 'Judicial Authority' },
 ];
 
 const DEMO_PASSWORD = 'Forensys@123';
@@ -36,7 +34,7 @@ export function LoginPage() {
   const [error, setError] = useState<unknown>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) return <Spinner label="Restoring sessionâ€¦" />;
+  if (loading) return <Spinner label="Restoring session…" />;
   if (officer) {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={from ?? '/cases'} replace />;
@@ -63,10 +61,6 @@ export function LoginPage() {
   }
 
   return (
-    /*
-     * Velaris hero: the animated WebGL gradient fills the whole viewport and the
-     * sign-in card sits in its children overlay.
-     */
     <Velaris
       height="auto"
       className="flex min-h-full items-center justify-center px-4 py-10"
@@ -75,7 +69,7 @@ export function LoginPage() {
       speed={1.5}
       grain={0.3}
     >
-    <div className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2">
+      <div className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2">
         {/* Brand panel */}
         <div className="bg-forensic-900 px-8 py-10 text-white">
           <h1 className="text-3xl font-semibold tracking-tight">ForenSys</h1>
@@ -85,16 +79,16 @@ export function LoginPage() {
 
           <ul className="mt-8 space-y-3 text-sm text-slate-300">
             <li className="flex gap-2">
-              <span className="text-amber-400">â—†</span> Register evidence with physical &amp; digital subtypes
+              <span className="text-amber-400 font-bold">•</span> Register evidence with physical &amp; digital subtypes
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">â—†</span> Tamper-evident chain-of-custody trail
+              <span className="text-amber-400 font-bold">•</span> Tamper-evident chain-of-custody trail
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">â—†</span> Database-enforced auditing on status changes
+              <span className="text-amber-400 font-bold">•</span> Database-enforced auditing on status changes
             </li>
             <li className="flex gap-2">
-              <span className="text-amber-400">â—†</span> Role-based access for officers, analysts &amp; admins
+              <span className="text-amber-400 font-bold">•</span> Role-based access for officers, analysts &amp; admins
             </li>
           </ul>
         </div>
@@ -138,7 +132,7 @@ export function LoginPage() {
             </div>
 
             <button type="submit" className="fs-btn-primary w-full" disabled={submitting}>
-              {submitting ? 'Signing inâ€¦' : 'Sign in'}
+              {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
